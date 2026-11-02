@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+face_recognition_models/
+jetson-env/
+.venv/
+photos/
+*.csv
+*.pkl
+__pycache__/
