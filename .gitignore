@@ -8,4 +8,6 @@ jetson-env/
 photos/
 *.csv
 *.pkl
+settings.json
+.api_key
 __pycache__/
