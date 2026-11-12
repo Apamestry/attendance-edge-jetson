@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attendance Admin</title>
+<style>
+  :root { --bg:#0f1216; --card:#181d24; --line:#2a313b; --text:#e6e9ee; --dim:#8b95a3;
+          --green:#3ecf6e; --red:#f05454; --yellow:#f5c542; --blue:#4b9dff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 18px; border-bottom:1px solid var(--line); background:var(--card); }
+  header h1 { font-size:17px; margin:0 12px 0 0; }
+  input, select, button { font:inherit; color:var(--text); background:#0f1216; border:1px solid var(--line); border-radius:6px; padding:6px 9px; }
+  button { cursor:pointer; background:#232a34; }
+  button:hover { border-color:var(--blue); }
+  button.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+  button.danger { color:var(--red); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  main { display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:16px; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .card h2 { font-size:15px; margin:0 0 10px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:6px 0; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .stat { background:#0f1216; border:1px solid var(--line); border-radius:8px; padding:8px; }
+  .stat b { display:block; font-size:18px; }
+  .stat span { color:var(--dim); font-size:12px; }
+  .pill { padding:2px 9px; border-radius:99px; font-size:12px; border:1px solid currentColor; }
+  .on { color:var(--green); } .off { color:var(--red); } .warn { color:var(--yellow); }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); }
+  th { color:var(--dim); font-weight:500; }
+  .members { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; }
+  .member { background:#0f1216; border:1px solid var(--line); border-radius:8px; padding:6px; text-align:center; }
+  .member img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; background:#222; }
+  .member small { color:var(--dim); display:block; }
+  #preview { width:100%; border-radius:8px; background:#000; display:none; }
+  .feed { max-height:260px; overflow:auto; }
+  .feed div { padding:5px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; }
+  .feed img { width:42px; border-radius:4px; }
+  .muted { color:var(--dim); }
+  #toast { position:fixed; right:16px; bottom:16px; padding:10px 14px; border-radius:8px; background:var(--green); color:#000; display:none; font-weight:600; }
+  label.setting { display:flex; justify-content:space-between; gap:8px; margin:4px 0; }
+  label.setting input, label.setting select { width:130px; }
+  .wide { grid-column:1 / -1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Attendance Admin</h1>
+  <input id="url" placeholder="Nano URL, e.g. https://nano.example.com" size="34">
+  <input id="key" type="password" placeholder="API key" size="20">
+  <button class="primary" id="connectBtn">Connect</button>
+  <span id="conn" class="pill off">offline</span>
+  <span id="device" class="muted"></span>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Device <span id="mode" class="pill">-</span></h2>
+    <div class="stats">
+      <div class="stat"><b id="sPresent">-</b><span>present today</span></div>
+      <div class="stat"><b id="sMembers">-</b><span>members</span></div>
+      <div class="stat"><b id="sFps">-</b><span>recognition FPS</span></div>
+      <div class="stat"><b id="sCam">-</b><span>camera</span></div>
+      <div class="stat"><b id="sUptime">-</b><span>uptime</span></div>
+      <div class="stat"><b id="sTimings" style="font-size:12px">-</b><span>detect / landmarks / encode ms</span></div>
+    </div>
+    <div id="sError" class="off" style="margin-top:6px"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="startBtn">Start tracker</button>
+      <button id="stopBtn">Stop tracker</button>
+      <button id="previewBtn">Show live preview</button>
+      <button id="reloadBtn" title="Re-read the photos folder">Reload faces</button>
+    </div>
+    <img id="preview" alt="live preview">
+  </section>
+
+  <section class="card">
+    <h2>Attendance
+      <span class="row" style="margin:0">
+        <input type="date" id="date">
+        <button id="exportBtn">Export CSV</button>
+      </span>
+    </h2>
+    <div class="row">
+      <select id="manualName"></select>
+      <button id="manualBtn">Mark present (manual)</button>
+    </div>
+    <table><thead><tr><th>Name</th><th>Date</th><th>Time</th><th></th></tr></thead><tbody id="attBody"></tbody></table>
+    <div id="attEmpty" class="muted">No entries.</div>
+  </section>
+
+  <section class="card wide">
+    <h2>Members <span class="muted" id="memCount"></span></h2>
+    <div class="row">
+      <input id="newName" placeholder="Full name">
+      <input id="newPhotos" type="file" accept="image/*" multiple>
+      <button class="primary" id="uploadBtn">Upload photos</button>
+      <span class="muted">or</span>
+      <button id="regStartBtn">Capture on Nano camera</button>
+    </div>
+    <div id="regPanel" class="card" style="display:none;margin:8px 0">
+      <div class="row"><b id="regTitle"></b> <span id="regCount" class="pill on"></span> <span id="regPose" class="warn"></span></div>
+      <div id="regErr" class="off"></div>
+      <div class="row"><button class="primary" id="regCapBtn">Capture</button><button id="regDoneBtn">Finish</button></div>
+      <div class="muted">Ask the person to stand in front of the Nano camera. 3-5 photos from different angles work best.</div>
+    </div>
+    <div id="uploadMsg" class="muted"></div>
+    <div class="members" id="members"></div>
+  </section>
+
+  <section class="card">
+    <h2>Recognition settings <button id="saveCfgBtn">Save</button></h2>
+    <div id="cfg" class="muted">Connect to load settings.</div>
+  </section>
+
+  <section class="card">
+    <h2>Live events</h2>
+    <div class="feed" id="feed"><span class="muted">Waiting for events...</span></div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let base = "", key = "", es = null, status = null, members = [], rows = [], previewOn = false;
+
+const SETTING_HELP = {
+  detection_model: "cnn = GPU, hog = CPU", upsample: "0 = ~4x faster detection (faces must be close)",
+  scale_factor: "detector input size", detect_every: "full detection every N cycles",
+  reverify_seconds: "re-identify tracked faces", face_match_tolerance: "lower = stricter",
+};
+
+function api(method, path, body) {
+  return fetch(base + path, {
+    method, headers: { "X-API-Key": key, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  }).then(async r => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    return data;
+  });
+}
+const withKey = p => base + p + (p.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(key);
+function toast(msg, color) {
+  const t = $("toast"); t.textContent = msg; t.style.background = color || "var(--green)";
+  t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 3500);
+}
+const fail = e => toast(e.message || e, "var(--red)");
+
+// ---------------- connection ----------------
+function connect() {
+  base = $("url").value.trim().replace(/\/+$/, "");
+  key = $("key").value.trim();
+  localStorage.setItem("edgeUrl", base); localStorage.setItem("edgeKey", key);
+  if (es) es.close();
+  api("GET", "/api/status").then(s => {
+    renderStatus(s); $("date").value = s.today;
+    loadMembers(); loadAttendance(); loadConfig();
+    es = new EventSource(withKey("/api/events"));
+    es.onopen = () => setConn(true);
+    es.onerror = () => setConn(false);
+    es.addEventListener("status", e => renderStatus(JSON.parse(e.data).data || JSON.parse(e.data)));
+    es.addEventListener("attendance_marked", e => {
+      const ev = JSON.parse(e.data), d = ev.data;
+      toast("Attendance: " + d.name + (d.manual ? " (manual)" : ""));
+      addFeed(`<b class="on">${esc(d.name)}</b> marked present ${d.confidence != null ? "(" + Math.round(d.confidence * 100) + "%)" : "(manual)"}`, ev.ts);
+      if (d.date === $("date").value) loadAttendance();
+    });
+    es.addEventListener("attendance_removed", e => { addFeed("Entry removed: " + esc(JSON.parse(e.data).data.name), JSON.parse(e.data).ts); loadAttendance(); });
+    es.addEventListener("members_changed", e => { members = JSON.parse(e.data).data.members; renderMembers(); });
+    es.addEventListener("registration_progress", e => renderReg(JSON.parse(e.data).data));
+    es.addEventListener("unknown_face", e => {
+      const ev = JSON.parse(e.data);
+      addFeed(`<img src="${ev.data.snapshot}"> <span class="off">Unknown face seen</span>`, ev.ts);
+    });
+    es.addEventListener("config_changed", () => loadConfig());
+  }).catch(e => { setConn(false); fail("Connect failed: " + e.message); });
+}
+function setConn(on) { $("conn").textContent = on ? "online" : "offline"; $("conn").className = "pill " + (on ? "on" : "off"); }
+
+// ---------------- status ----------------
+function fmtUptime(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h}h ${m}m` : `${m}m`; }
+function renderStatus(s) {
+  const prevMode = status && status.mode;
+  status = s;
+  $("device").textContent = `${s.device_id} · v${s.version}`;
+  $("mode").textContent = s.mode;
+  $("mode").className = "pill " + (s.mode === "tracking" ? "on" : s.mode === "registering" ? "warn" : "muted");
+  $("sPresent").textContent = s.present_today;
+  $("sMembers").textContent = s.members;
+  $("sFps").textContent = s.mode === "tracking" ? s.fps : "-";
+  $("sCam").innerHTML = s.camera_ok ? '<span class="on">on</span>' : '<span class="muted">off</span>';
+  $("sUptime").textContent = fmtUptime(s.uptime_s);
+  const t = s.timings_ms || {};
+  $("sTimings").textContent = t.detect != null ? `${t.detect} / ${t.landmarks} / ${t.encode}` : "-";
+  $("sError").textContent = s.error || "";
+  $("startBtn").disabled = s.mode !== "idle";
+  $("stopBtn").disabled = s.mode !== "tracking";
+  $("regStartBtn").disabled = s.mode !== "idle";
+  renderReg(s.registration);
+  if (prevMode !== s.mode) refreshPreview();
+}
+function refreshPreview() {
+  const img = $("preview"), show = previewOn && status && status.camera_ok;
+  img.style.display = show ? "block" : "none";
+  img.src = show ? withKey("/api/stream") + "&t=" + Date.now() : "";
+  $("previewBtn").textContent = previewOn ? "Hide live preview" : "Show live preview";
+}
+
+// ---------------- attendance ----------------
+function loadAttendance() {
+  api("GET", "/api/attendance?date=" + $("date").value).then(d => {
+    rows = d.rows;
+    $("attBody").innerHTML = rows.map((r, i) =>
+      `<tr><td>${esc(r.name)}</td><td>${esc(r.date)}</td><td>${esc(r.time)}</td>
+       <td><button class="danger" data-i="${i}">Remove</button></td></tr>`).join("");
+    $("attEmpty").style.display = rows.length ? "none" : "block";
+  }).catch(fail);
+}
+$("attBody").onclick = e => {
+  const i = e.target.dataset.i; if (i === undefined) return;
+  const r = rows[i];
+  if (!confirm(`Remove ${r.name} on ${r.date}?`)) return;
+  api("DELETE", `/api/attendance?name=${encodeURIComponent(r.name)}&date=${r.date}`).then(loadAttendance).catch(fail);
+};
+$("manualBtn").onclick = () => {
+  const name = $("manualName").value; if (!name) return;
+  api("POST", "/api/attendance", { name, date: $("date").value }).then(loadAttendance).catch(fail);
+};
+$("exportBtn").onclick = () => {
+  const csv = "Name,Date,Time\n" + rows.map(r => [r.name, r.date, r.time].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `attendance_${$("date").value}.csv`; a.click();
+};
+$("date").onchange = loadAttendance;
+
+// ---------------- members ----------------
+function loadMembers() { api("GET", "/api/members").then(d => { members = d.members; renderMembers(); }).catch(fail); }
+function renderMembers() {
+  $("memCount").textContent = members.length + " registered";
+  $("members").innerHTML = members.map(m => `<div class="member">
+      <img loading="lazy" src="${withKey("/api/members/" + encodeURIComponent(m.id) + "/photo")}&v=${m.photo_count}" alt="">
+      <div>${esc(m.name)}</div><small>${m.photo_count} photo(s)</small>
+      <button class="danger" data-id="${esc(m.id)}" data-name="${esc(m.name)}">Delete</button></div>`).join("");
+  $("manualName").innerHTML = members.map(m => `<option>${esc(m.name)}</option>`).join("");
+}
+$("members").onclick = e => {
+  const id = e.target.dataset.id; if (!id) return;
+  if (!confirm(`Delete ${e.target.dataset.name} and all their photos? Past attendance is kept.`)) return;
+  api("DELETE", "/api/members/" + encodeURIComponent(id)).catch(fail);
+};
+
+// Downscale to <= 800 px in the browser so uploads stay small over the tunnel
+function shrink(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, 800 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src); resolve(c.toDataURL("image/jpeg", 0.9));
+    };
+    img.onerror = () => reject(new Error("Cannot read " + file.name));
+    img.src = URL.createObjectURL(file);
+  });
+}
+$("uploadBtn").onclick = async () => {
+  const name = $("newName").value.trim(), files = [...$("newPhotos").files];
+  if (!name || !files.length) return fail("Enter a name and choose photos");
+  $("uploadBtn").disabled = true; $("uploadMsg").textContent = "Uploading and checking faces on the Nano...";
+  try {
+    const photos = await Promise.all(files.map(shrink));
+    const r = await api("POST", "/api/members", { name, photos }).catch(e => { throw e; });
+    $("uploadMsg").textContent = `Saved ${r.saved} photo(s) for ${r.name}.`;
+    toast(`Saved ${r.saved} photo(s) for ${r.name}`);
+    $("newPhotos").value = "";
+  } catch (e) { $("uploadMsg").textContent = e.message; fail(e); }
+  $("uploadBtn").disabled = false;
+};
+
+// ---------------- remote registration ----------------
+function renderReg(r) {
+  $("regPanel").style.display = r ? "block" : "none";
+  if (!r) return;
+  $("regTitle").textContent = "Registering: " + r.name;
+  $("regCount").textContent = `${r.photos_saved}/${r.target}`;
+  $("regPose").textContent = "Next: " + r.next_pose;
+  $("regErr").textContent = r.last_error || "";
+}
+$("regStartBtn").onclick = () => {
+  const name = $("newName").value.trim(); if (!name) return fail("Enter a name first");
+  api("POST", "/api/register/start", { name }).then(r => { renderReg(r); previewOn = true; }).catch(fail);
+};
+$("regCapBtn").onclick = () => api("POST", "/api/register/capture").then(r => {
+  renderReg(r); if (r.saved) toast(`Saved photo ${r.photos_saved}`); else fail(r.last_error);
+}).catch(fail);
+$("regDoneBtn").onclick = () => api("POST", "/api/register/finish").then(r => {
+  toast(r.photos_saved ? `Saved ${r.photos_saved} photo(s) for ${r.name}` : "Registration cancelled", r.photos_saved ? null : "var(--yellow)");
+  renderReg(null);
+}).catch(fail);
+
+// ---------------- settings ----------------
+function loadConfig() {
+  api("GET", "/api/config").then(d => {
+    $("cfg").classList.remove("muted");
+    $("cfg").innerHTML = Object.entries(d.rules).map(([k, rule]) => {
+      const v = d.values[k], help = SETTING_HELP[k] ? `<small class="muted"> ${SETTING_HELP[k]}</small>` : "";
+      const input = rule[0] === "choice"
+        ? `<select data-k="${k}">${rule[1].map(o => `<option ${o === v ? "selected" : ""}>${o}</option>`).join("")}</select>`
+        : `<input data-k="${k}" type="number" min="${rule[1]}" max="${rule[2]}" step="${rule[0] === "int" ? 1 : 0.01}" value="${v}">`;
+      return `<label class="setting"><span>${k}${help}</span>${input}</label>`;
+    }).join("");
+  }).catch(fail);
+}
+$("saveCfgBtn").onclick = () => {
+  const body = {};
+  document.querySelectorAll("#cfg [data-k]").forEach(el => body[el.dataset.k] = el.tagName === "SELECT" ? el.value : Number(el.value));
+  api("PUT", "/api/config", body).then(() => toast("Settings saved")).catch(fail);
+};
+
+// ---------------- feed / controls ----------------
+function addFeed(html, ts) {
+  const feed = $("feed");
+  if (feed.querySelector(".muted:only-child")) feed.innerHTML = "";
+  const div = document.createElement("div");
+  div.innerHTML = `<span class="muted">${esc((ts || "").slice(11))}</span> ${html}`;
+  feed.prepend(div);
+  while (feed.children.length > 100) feed.lastChild.remove();
+}
+$("startBtn").onclick = () => api("POST", "/api/tracker/start").then(renderStatus).catch(fail);
+$("stopBtn").onclick = () => api("POST", "/api/tracker/stop").then(renderStatus).catch(fail);
+$("reloadBtn").onclick = () => api("POST", "/api/reload").then(() => toast("Faces will reload")).catch(fail);
+$("previewBtn").onclick = () => { previewOn = !previewOn; refreshPreview(); };
+$("connectBtn").onclick = connect;
+
+// Defaults: served from the Nano itself -> same origin; otherwise remember the last URL
+$("url").value = localStorage.getItem("edgeUrl") || (location.protocol.startsWith("http") ? location.origin : "");
+$("key").value = localStorage.getItem("edgeKey") || "";
+if ($("url").value && $("key").value) connect();
+</script>
+</body>
+</html>
+
