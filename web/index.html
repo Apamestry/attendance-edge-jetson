@@ -3,539 +3,950 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EdgeGuard — Attendance Dashboard</title>
+<title>Attendance Edge · Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232dd4bf' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ===== DESIGN SYSTEM ===== */
-:root {
-  --bg: #07090d;
-  --bg2: #0d1117;
-  --card: #161b22;
-  --card-hover: #1c2129;
-  --border: #21262d;
-  --border-focus: #388bfd;
-  --text: #e6edf3;
-  --text2: #8b949e;
-  --text3: #484f58;
-  --accent: #58a6ff;
-  --accent-glow: rgba(56,139,253,.15);
-  --green: #3fb950;
-  --green-bg: rgba(63,185,80,.12);
-  --red: #f85149;
-  --red-bg: rgba(248,81,73,.12);
-  --yellow: #d29922;
-  --yellow-bg: rgba(210,153,34,.12);
-  --purple: #bc8cff;
-  --cyan: #39d2c0;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 4px 24px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.2);
-  --transition: 180ms cubic-bezier(.4,0,.2,1);
+/* Colour language mirrors the camera HUD drawn on the Nano:
+   green = present / verified, amber = blink to verify, red = unknown. Teal = system accent. */
+:root{
+  --bg:#070b10; --surface:#0b1118; --card:#0f1620; --card2:#141d29; --line:#1c2735; --line2:#283647;
+  --text:#e6edf5; --muted:#8a9aad; --faint:#56667a;
+  --teal:#2dd4bf; --teal-d:rgba(45,212,191,.12);
+  --green:#34d399; --green-d:rgba(52,211,153,.12);
+  --amber:#fbbf24; --amber-d:rgba(251,191,36,.12);
+  --red:#f87171; --red-d:rgba(248,113,113,.12);
+  --blue:#60a5fa; --blue-d:rgba(96,165,250,.12);
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  --shadow:0 12px 40px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1.5;
-       background: var(--bg); color: var(--text); min-height: 100vh; }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background:radial-gradient(900px 500px at 85% -10%,rgba(45,212,191,.08),transparent 60%),radial-gradient(700px 420px at -10% 110%,rgba(96,165,250,.06),transparent 60%)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.ic{flex-shrink:0;display:block}
+.spin{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+code{font-family:var(--mono);font-size:12px;padding:1px 5px;border-radius:5px;background:var(--surface);border:1px solid var(--line)}
+kbd{font:600 10px var(--mono);padding:1px 5px;border-radius:4px;background:rgba(0,0,0,.18);border:1px solid rgba(0,0,0,.2)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}::-webkit-scrollbar-track{background:transparent}
+.muted{color:var(--muted)} .small{font-size:12px} .mono{font-family:var(--mono)} .grow{flex:1}
+.block{width:100%} .stack{display:grid;gap:10px} .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lbl{font-weight:600;font-size:13px} .err{color:var(--red);font-size:12px} .span-all{grid-column:1/-1}
 
-/* ===== SCROLLBAR ===== */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+/* ---------- buttons, inputs, pills ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:10px;font-weight:600;font-size:13px;border:1px solid var(--line2);background:var(--card2);transition:background .15s,border-color .15s,filter .15s,transform .1s;white-space:nowrap}
+.btn:hover{border-color:var(--faint);background:#1a2533}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.45;pointer-events:none}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#032621}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{background:var(--red-d);border-color:transparent;color:var(--red)}
+.btn.danger:hover{border-color:var(--red)}
+.btn.danger.solid{background:var(--red);border-color:var(--red);color:#2b0909}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--card2);color:var(--text)}
+.btn.sm{height:30px;padding:0 10px;font-size:12px;border-radius:8px}
+.btn.icon{width:36px;padding:0}.btn.sm.icon{width:30px}
+.input{height:38px;width:100%;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);outline:none;transition:border-color .15s,box-shadow .15s}
+.input:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-d)}
+.input::placeholder{color:var(--faint)}
+.input:disabled{opacity:.6}
+.input.date{width:158px;color-scheme:dark;font-family:var(--mono);font-size:13px}
+.search{position:relative;display:block}
+.search .ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--faint)}
+.search .input{padding-left:34px}
+label.field{display:grid;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.green{color:var(--green);background:var(--green-d)} .pill.amber{color:var(--amber);background:var(--amber-d)}
+.pill.red{color:var(--red);background:var(--red-d)} .pill.teal{color:var(--teal);background:var(--teal-d)}
+.pill.gray{color:var(--muted);background:rgba(138,154,173,.1)}
+.pill.live .dot{animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 currentColor}70%,100%{box-shadow:0 0 0 6px transparent}}
+.chip{font:700 10px var(--mono);padding:1px 6px;border-radius:5px;letter-spacing:.02em}
+.chip.green{color:var(--green);background:var(--green-d)} .chip.red{color:var(--red);background:var(--red-d)}
+.chip.gray{color:var(--muted);background:rgba(138,154,173,.12)} .chip.amber{color:var(--amber);background:var(--amber-d)}
+.seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--surface);border:1px solid var(--line2)}
+.seg button{height:30px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;transition:.15s}
+.seg button:hover{color:var(--text)}
+.seg button.active{background:var(--card2);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.seg .n{font:600 11px var(--mono);padding:1px 6px;border-radius:6px;background:var(--line)}
+.seg.full{display:flex}.seg.full button{flex:1;justify-content:center}
+.seg.locked button:not(.active){opacity:.4;pointer-events:none}
 
-/* ===== TOPBAR ===== */
-.topbar { display: flex; align-items: center; gap: 12px; padding: 12px 20px;
-          background: var(--card); border-bottom: 1px solid var(--border);
-          position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); }
-.logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: -.01em; }
-.logo svg { flex-shrink: 0; }
-.logo-text { background: linear-gradient(135deg, var(--accent), var(--cyan)); -webkit-background-clip: text;
-             -webkit-text-fill-color: transparent; }
-.topbar-sep { width: 1px; height: 24px; background: var(--border); }
-.topbar-fields { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: 1; }
-.topbar-fields input { font: inherit; color: var(--text); background: var(--bg2); border: 1px solid var(--border);
-                       border-radius: var(--radius-sm); padding: 7px 12px; transition: border-color var(--transition); outline: none; }
-.topbar-fields input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
-.topbar-fields input::placeholder { color: var(--text3); }
+/* camera-HUD corner brackets (same motif as draw_face_box on the Nano) */
+.hud{position:absolute;inset:12px;pointer-events:none;--c:var(--teal);--s:22px;opacity:.85;background:
+  linear-gradient(var(--c),var(--c)) 0 0/var(--s) 2px,linear-gradient(var(--c),var(--c)) 0 0/2px var(--s),
+  linear-gradient(var(--c),var(--c)) 100% 0/var(--s) 2px,linear-gradient(var(--c),var(--c)) 100% 0/2px var(--s),
+  linear-gradient(var(--c),var(--c)) 0 100%/var(--s) 2px,linear-gradient(var(--c),var(--c)) 0 100%/2px var(--s),
+  linear-gradient(var(--c),var(--c)) 100% 100%/var(--s) 2px,linear-gradient(var(--c),var(--c)) 100% 100%/2px var(--s);
+  background-repeat:no-repeat}
+.ph-ic{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--card2);color:var(--faint);border:1px solid var(--line2);flex-shrink:0}
 
-/* ===== BUTTONS ===== */
-button, .btn { font: 500 13px/1 'Inter', sans-serif; color: var(--text); background: var(--bg2);
-               border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px;
-               cursor: pointer; transition: all var(--transition); display: inline-flex; align-items: center; gap: 6px; }
-button:hover { background: var(--card-hover); border-color: var(--text3); }
-button:active { transform: scale(.98); }
-button:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-.btn-primary:hover { background: #4b96e6; border-color: #4b96e6; }
-.btn-danger { color: var(--red); border-color: transparent; background: var(--red-bg); }
-.btn-danger:hover { border-color: var(--red); }
-.btn-success { background: var(--green-bg); color: var(--green); border-color: transparent; }
-.btn-success:hover { border-color: var(--green); }
-.btn-sm { padding: 5px 10px; font-size: 12px; }
-.btn-icon { padding: 6px 8px; }
+/* ---------- connect screen ---------- */
+.connect{min-height:100vh;display:grid;place-items:center;padding:24px}
+.connect-card{position:relative;width:min(440px,100%);display:grid;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:34px 32px;box-shadow:var(--shadow)}
+.connect-card .hud{inset:-1px;--s:28px}
+.connect-card h2{font-size:20px;letter-spacing:-.02em;margin-top:14px}
+.connect-card .hint{font-size:11.5px;color:var(--faint)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-.01em;line-height:1.2}
+.brand small{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.brand-mark{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--teal),#3b82f6);color:#032621;box-shadow:0 0 24px rgba(45,212,191,.25)}
 
-/* ===== BADGES ===== */
-.badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px;
-         font-size: 12px; font-weight: 500; letter-spacing: .02em; }
-.badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; }
-.badge-on { color: var(--green); background: var(--green-bg); }
-.badge-on::before { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.badge-off { color: var(--red); background: var(--red-bg); }
-.badge-off::before { background: var(--red); }
-.badge-warn { color: var(--yellow); background: var(--yellow-bg); }
-.badge-warn::before { background: var(--yellow); }
-.badge-muted { color: var(--text2); background: rgba(139,148,158,.1); }
-.badge-muted::before { background: var(--text3); }
+/* ---------- app shell ---------- */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:26px;padding:20px 14px;border-right:1px solid var(--line);background:rgba(11,17,24,.75);backdrop-filter:blur(10px);z-index:20}
+.nav{display:grid;gap:4px}
+.nav button{position:relative;display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:10px;color:var(--muted);font-weight:500;transition:.15s}
+.nav button:hover{background:var(--card);color:var(--text)}
+.nav button.active{background:var(--teal-d);color:var(--teal)}
+.nav button.active::before{content:"";position:absolute;left:-14px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--teal)}
+.nav .count{margin-left:auto;font:600 11px var(--mono);color:var(--faint)}
+.side-foot{margin-top:auto;display:grid;gap:8px}
+.device-chip{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:grid;gap:3px}
+.device-chip .row1{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;overflow:hidden}
+.device-chip .row1 span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.device-chip .sub{font-size:11px;color:var(--faint);font-family:var(--mono)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}
+.status-dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-d)}
+.main{min-width:0;padding:22px 28px 48px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.topbar h1{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.topbar p{color:var(--muted);font-size:13px}
+.top-actions{display:flex;align-items:center;gap:10px}
+.clock{font:500 12px var(--mono);color:var(--muted);padding:0 12px;height:36px;display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.page{animation:fade .2s}
+@keyframes fade{from{opacity:0}}
 
-/* ===== LAYOUT ===== */
-.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
-.col-4 { grid-column: span 4; }
-.col-5 { grid-column: span 5; }
-.col-6 { grid-column: span 6; }
-.col-7 { grid-column: span 7; }
-.col-8 { grid-column: span 8; }
-.col-12 { grid-column: span 12; }
-@media (max-width: 1100px) { .col-4,.col-5,.col-6,.col-7,.col-8 { grid-column: span 12; } }
+/* ---------- cards ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;min-width:0}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card-head h3{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-head h3 .ic{color:var(--teal)}
+.card-body{padding:16px 18px}
 
-/* ===== CARDS ===== */
-.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-        overflow: hidden; transition: border-color var(--transition); }
-.card:hover { border-color: var(--text3); }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-             padding: 14px 18px; border-bottom: 1px solid var(--border); }
-.card-head h2 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.card-head h2 svg { color: var(--text2); }
-.card-body { padding: 16px 18px; }
+/* ---------- dashboard ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.kpi{padding:16px 18px;display:flex;align-items:center;gap:14px}
+.kpi-ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}
+.kpi-ic.red{background:var(--red-d);color:var(--red)} .kpi-ic.teal{background:var(--teal-d);color:var(--teal)} .kpi-ic.blue{background:var(--blue-d);color:var(--blue)}
+.kpi-label{font-size:12px;color:var(--muted)}
+.kpi-val{font:700 24px/1.15 var(--mono);letter-spacing:-.03em}
+.kpi-val small{font-size:13px;color:var(--faint);font-weight:500;letter-spacing:0}
+.kpi-val.sm{font-size:16px;line-height:1.5}
+.kpi-sub{font-size:11px;color:var(--faint);margin-top:1px}
+.ring-wrap{position:relative;width:52px;height:52px;flex-shrink:0}
+.ring{width:52px;height:52px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:3.4}
+.ring-bg{stroke:var(--line2)} .ring-fg{stroke:var(--green);stroke-linecap:round;transition:stroke-dasharray .6s}
+.ring-wrap span{position:absolute;inset:0;display:grid;place-items:center;font:700 11px var(--mono)}
+.dash{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:16px;align-items:stretch}
+.viewport{position:relative;aspect-ratio:4/3;background:#03060a;border-radius:12px;overflow:hidden}
+.viewport img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.viewport.flash::after{content:"";position:absolute;inset:0;background:#fff;animation:camflash .35s forwards;pointer-events:none}
+@keyframes camflash{from{opacity:.55}to{opacity:0}}
+.live-card .viewport{margin:14px 18px 0}
+.live-tag{position:absolute;top:22px;left:24px}
+.placeholder{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;gap:10px;padding:24px;color:var(--muted)}
+.placeholder h4{color:var(--text);font-size:15px;font-weight:600}
+.placeholder p{font-size:13px;max-width:340px}
+.placeholder .btn{margin-top:6px}
+.grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(45,212,191,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(45,212,191,.05) 1px,transparent 1px);background-size:32px 32px}
+.scanline{position:absolute;left:12px;right:12px;top:12px;height:2px;background:linear-gradient(90deg,transparent,var(--teal),transparent);box-shadow:0 0 18px var(--teal);opacity:.75;animation:scan 2.6s ease-in-out infinite alternate}
+@keyframes scan{to{top:calc(100% - 14px)}}
+.placeholder .ph-ic.scan{color:var(--teal);border-color:rgba(45,212,191,.35);background:var(--teal-d)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:12px 18px 14px;font-size:12px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:7px}
+.legend i{width:12px;height:12px;border-radius:3px;border:2px solid currentColor;display:block}
+.activity{display:flex;flex-direction:column;min-height:0}
+.feed{list-style:none;overflow:auto;padding:6px 8px;flex:1;max-height:600px}
+.feed li{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:10px}
+.feed li:hover{background:var(--card2)}
+.feed li.new{animation:flashrow 1.6s}
+@keyframes flashrow{from{background:var(--teal-d)}}
+.f-main{flex:1;min-width:0}
+.f-title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-sub{font:11px var(--mono);color:var(--faint);display:flex;align-items:center;gap:6px;margin-top:1px}
+.f-ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+.f-ic.teal{background:var(--teal-d);color:var(--teal)} .f-ic.red{background:var(--red-d);color:var(--red)} .f-ic.amber{background:var(--amber-d);color:var(--amber)}
+.avatar{position:relative;width:36px;height:36px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;overflow:hidden;font-size:12px;font-weight:700;background:var(--card2);color:var(--muted);border:1px solid var(--line2)}
+.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.avatar.red{border-color:rgba(248,113,113,.5);color:var(--red)}
+.empty{display:grid;justify-items:center;gap:10px;padding:44px 20px;text-align:center;color:var(--muted);font-size:13px}
+.empty b{color:var(--text);font-size:14px}
 
-/* ===== STATS GRID ===== */
-.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px;
-             transition: border-color var(--transition); position: relative; overflow: hidden; }
-.stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; opacity: 0;
-                    transition: opacity var(--transition); }
-.stat-card:hover::after { opacity: 1; }
-.stat-card.green::after { background: linear-gradient(90deg, var(--green), transparent); }
-.stat-card.blue::after { background: linear-gradient(90deg, var(--accent), transparent); }
-.stat-card.cyan::after { background: linear-gradient(90deg, var(--cyan), transparent); }
-.stat-val { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: -.03em; }
-.stat-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+/* ---------- attendance ---------- */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
+.toolbar .search{width:220px}
+.date-nav{display:flex;align-items:center;gap:6px}
+.rate-row{display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;flex:1;max-width:340px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:3px;transition:width .5s}
+.table-wrap{overflow-x:auto}
+.table{width:100%;border-collapse:collapse}
+.table th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);text-align:left;padding:10px 18px;border-bottom:1px solid var(--line);white-space:nowrap}
+.table td{padding:10px 18px;border-bottom:1px solid var(--line);font-size:13px}
+.table tr:last-child td{border-bottom:0}
+.table tbody tr:hover td{background:rgba(20,29,41,.6)}
+.table td.actions{text-align:right;width:1%;white-space:nowrap}
+.person{display:flex;align-items:center;gap:12px;font-weight:600}
+.person .sub{font-size:11px;color:var(--faint);font-weight:400}
 
-/* ===== PREVIEW ===== */
-.preview-container { position: relative; border-radius: var(--radius-sm); overflow: hidden; background: #000; }
-.preview-container img { width: 100%; display: block; }
-.preview-off { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/9;
-               color: var(--text3); font-size: 13px; gap: 8px; }
+/* ---------- members ---------- */
+.page-tools{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.page-tools .search{width:280px}
+.members{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.member{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:transform .18s,border-color .18s,box-shadow .18s;text-align:left}
+.member:hover{border-color:var(--line2);transform:translateY(-2px);box-shadow:var(--shadow)}
+.member .ph{position:relative;aspect-ratio:1;background:var(--surface);display:grid;place-items:center;font-size:34px;font-weight:700;color:var(--faint)}
+.member .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.member .ph .hud{inset:10px;--s:16px;opacity:0;transition:opacity .18s}
+.member:hover .ph .hud{opacity:.9}
+.member .tag{position:absolute;top:10px;left:10px;backdrop-filter:blur(6px)}
+.member .del{position:absolute;top:8px;right:8px;opacity:0;background:rgba(7,11,16,.8);border-color:transparent;color:var(--red);transition:opacity .15s}
+.member:hover .del,.member .del:focus-visible{opacity:1}
+@media (hover:none){.member .del{opacity:1}}
+.member .info{padding:12px 14px}
+.member .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member .meta{font-size:12px;color:var(--faint)}
+.add-tile{display:grid;place-content:center;justify-items:center;gap:6px;min-height:250px;padding:20px;border-style:dashed;color:var(--muted);text-align:center}
+.add-tile:hover{border-color:var(--teal);color:var(--text)}
+.add-tile .ph-ic{color:var(--teal);background:var(--teal-d);border-color:rgba(45,212,191,.35)}
+.add-tile span{font-size:12px;color:var(--faint)}
 
-/* ===== TABLE ===== */
-.data-table { width: 100%; border-collapse: collapse; }
-.data-table th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text3);
-                 text-transform: uppercase; letter-spacing: .06em; padding: 8px 10px;
-                 border-bottom: 1px solid var(--border); }
-.data-table td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
-.data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: var(--bg2); }
-.table-wrap { max-height: 300px; overflow-y: auto; }
+/* ---------- settings ---------- */
+.settings{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.set-group+.set-group{margin-top:16px}
+.set-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:20px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.set-row:last-child{border-bottom:0}
+.set-row .help{font-size:12px;color:var(--faint);margin-top:2px}
+.set-row.edited .lbl::after{content:"edited";margin-left:8px;font:700 10px var(--mono);padding:1px 6px;border-radius:5px;color:var(--amber);background:var(--amber-d);vertical-align:middle}
+.set-row .seg{display:flex;width:100%}.set-row .seg button{flex:1;justify-content:center;padding:0 6px}
+.range{display:flex;align-items:center;gap:12px}
+.range input{flex:1;accent-color:var(--teal);cursor:pointer}
+.range output{min-width:64px;text-align:center;font:600 12px var(--mono);padding:4px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--line)}
+.side-panel{position:sticky;top:22px;display:grid;gap:16px}
+.perf-fps{display:flex;align-items:baseline;gap:8px;margin-bottom:14px}
+.perf-fps b{font:700 34px var(--mono);letter-spacing:-.03em}
+.perf-fps span{color:var(--muted);font-size:12px}
+.metric{display:grid;gap:6px;margin-bottom:12px}
+.metric .top{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.metric .top b{font-family:var(--mono);color:var(--text)}
+.metric .bar{max-width:none}
+.tip{display:flex;gap:8px;font-size:12px;color:var(--muted);padding:10px 12px;border-radius:10px;background:var(--teal-d);margin-top:6px}
+.tip .ic{color:var(--teal);margin-top:2px}
 
-/* ===== MEMBERS GRID ===== */
-.members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
-.member-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm);
-               padding: 10px; text-align: center; transition: all var(--transition); position: relative; }
-.member-card:hover { border-color: var(--accent); transform: translateY(-2px);
-                     box-shadow: 0 8px 24px rgba(0,0,0,.3); }
-.member-card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: var(--bg);
-                   margin-bottom: 8px; }
-.member-card .name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.member-card small { color: var(--text2); font-size: 11px; }
-.member-card .del-btn { position: absolute; top: 6px; right: 6px; opacity: 0; transition: opacity var(--transition);
-                        background: var(--red-bg); border: none; color: var(--red); border-radius: 50%;
-                        width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center;
-                        font-size: 14px; cursor: pointer; }
-.member-card:hover .del-btn { opacity: 1; }
+/* ---------- modals ---------- */
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(3,6,10,.72);backdrop-filter:blur(6px);animation:fade .15s}
+.modal-card{width:min(640px,100%);max-height:calc(100vh - 40px);overflow:auto;background:var(--card);border:1px solid var(--line2);border-radius:18px;box-shadow:var(--shadow);animation:pop .18s}
+.modal-card.sm{width:min(420px,100%)}
+@keyframes pop{from{transform:scale(.97);opacity:0}}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.modal-head h3,.modal-body h3{font-size:16px;letter-spacing:-.01em}
+.modal-body{padding:20px;display:grid;gap:16px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--line)}
+.drop{display:grid;justify-items:center;gap:8px;padding:26px;text-align:center;color:var(--muted);border:1.5px dashed var(--line2);border-radius:14px;cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--teal);background:var(--teal-d);color:var(--text)}
+.drop b{color:var(--text);font-size:13px}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;margin-top:12px}
+.thumb{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:2px solid var(--line2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb.ok{border-color:var(--green)} .thumb.bad{border-color:var(--red)}
+.thumb button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:rgba(3,6,10,.8)}
+.thumb .why{position:absolute;left:0;right:0;bottom:0;padding:3px 5px;font-size:10px;line-height:1.25;background:rgba(127,29,29,.9);color:#fff}
+.thumb .okmark{position:absolute;left:4px;bottom:4px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#032621}
+.msg{font-size:13px;color:var(--muted);margin-top:10px}
+.msg:empty{display:none}
+.cap-intro{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.cap-intro p{margin-top:2px}
+.notice{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--amber-d);color:var(--amber);font-size:13px;margin-top:12px}
+.notice span{flex:1}
+.pose{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;background:rgba(3,6,10,.78);border:1px solid var(--line2);font-weight:600;font-size:13px;white-space:nowrap}
+.pose .ic{color:var(--amber)}
+.steps{display:flex;gap:6px;margin-top:14px}
+.steps i{flex:1;height:6px;border-radius:3px;background:var(--line2);transition:background .3s}
+.steps i.done{background:var(--green)}
+.cap-meta{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:12px;color:var(--muted)}
 
-/* ===== FEED ===== */
-.feed { max-height: 320px; overflow-y: auto; }
-.feed-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0;
-             border-bottom: 1px solid var(--border); font-size: 13px; }
-.feed-item:last-child { border-bottom: none; }
-.feed-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); min-width: 60px; padding-top: 2px; }
-.feed-item img { width: 38px; height: 38px; border-radius: 6px; object-fit: cover; }
-.feed-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-.feed-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.feed-dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
-.feed-dot.yellow { background: var(--yellow); }
+/* ---------- toasts ---------- */
+.toasts{position:fixed;top:18px;right:18px;z-index:80;display:grid;gap:8px;width:min(360px,calc(100vw - 36px))}
+.toast{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--line2);border-left-width:3px;box-shadow:var(--shadow);font-size:13px;animation:slidein .2s;transition:opacity .25s,transform .25s}
+.toast .ic{margin-top:1px}
+.toast.success{border-left-color:var(--green)} .toast.success .ic{color:var(--green)}
+.toast.error{border-left-color:var(--red)} .toast.error .ic{color:var(--red)}
+.toast.info{border-left-color:var(--teal)} .toast.info .ic{color:var(--teal)}
+.toast.out{opacity:0;transform:translateX(16px)}
+@keyframes slidein{from{opacity:0;transform:translateX(16px)}}
 
-/* ===== REGISTRATION PANEL ===== */
-.reg-panel { background: var(--bg2); border: 1px solid var(--accent); border-radius: var(--radius-sm);
-             padding: 14px; margin: 12px 0; display: none; }
-.reg-panel.active { display: block; animation: slideDown .2s ease; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-
-/* ===== SETTINGS ===== */
-.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0;
-               border-bottom: 1px solid var(--border); }
-.setting-row:last-child { border-bottom: none; }
-.setting-row label { font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
-.setting-row label small { color: var(--text3); font-size: 11px; }
-.setting-row input, .setting-row select { font: 500 13px 'JetBrains Mono', monospace; color: var(--text);
-                                           background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-                                           padding: 6px 10px; width: 120px; transition: border-color var(--transition);
-                                           outline: none; }
-.setting-row input:focus, .setting-row select:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
-
-/* ===== FORMS ===== */
-.form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.form-input { font: inherit; color: var(--text); background: var(--bg2); border: 1px solid var(--border);
-              border-radius: var(--radius-sm); padding: 8px 12px; outline: none; transition: border-color var(--transition); }
-.form-input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
-.form-input::placeholder { color: var(--text3); }
-.form-input[type="file"] { font-size: 12px; padding: 6px 10px; }
-.form-input[type="date"] { font-family: 'JetBrains Mono', monospace; font-size: 12px; color-scheme: dark; }
-select.form-input { cursor: pointer; }
-
-/* ===== TOAST ===== */
-.toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 18px; border-radius: var(--radius-sm);
-         font-weight: 600; font-size: 13px; display: none; z-index: 999; box-shadow: var(--shadow);
-         animation: toastIn .25s ease; max-width: 380px; }
-@keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-
-/* ===== HELPERS ===== */
-.muted { color: var(--text2); }
-.dimmed { color: var(--text3); }
-.mono { font-family: 'JetBrains Mono', monospace; }
-.gap-8 { gap: 8px; }
-.gap-12 { gap: 12px; }
-.mt-8 { margin-top: 8px; }
-.mt-12 { margin-top: 12px; }
-.empty-state { text-align: center; padding: 24px; color: var(--text3); font-size: 13px; }
-.icon-inline { width: 16px; height: 16px; vertical-align: text-bottom; }
-.glow-line { height: 2px; background: linear-gradient(90deg, var(--accent), var(--cyan), var(--purple));
-             border: none; opacity: .5; margin: 0; }
+/* ---------- responsive ---------- */
+@media (max-width:1200px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dash,.settings{grid-template-columns:1fr}.side-panel{position:static}.feed{max-height:420px}}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;inset:auto 0 0 0;height:auto;flex-direction:row;padding:6px;border-right:0;border-top:1px solid var(--line)}
+  .sidebar .brand,.side-foot{display:none}
+  .nav{grid-auto-flow:column;width:100%}
+  .nav button{flex-direction:column;height:auto;padding:6px;gap:2px;font-size:11px;justify-content:center}
+  .nav button.active::before,.nav .count,.clock{display:none}
+  .main{padding:16px 14px 90px}
+  .set-row{grid-template-columns:1fr}
+  .toolbar .search,.page-tools .search{width:100%}
+}
+@media (max-width:520px){.kpis{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="logo">
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <rect width="28" height="28" rx="8" fill="url(#g1)"/>
-      <path d="M8 14.5c0-3 2.5-5.5 6-5.5s6 2.5 6 5.5c0 1.8-1 3.3-2.5 4.2V20a1 1 0 01-1 1h-5a1 1 0 01-1-1v-1.3C9 17.8 8 16.3 8 14.5z" fill="#fff" opacity=".9"/>
-      <circle cx="12" cy="14" r="1.2" fill="#161b22"/><circle cx="16" cy="14" r="1.2" fill="#161b22"/>
-      <defs><linearGradient id="g1" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#58a6ff"/><stop offset="1" stop-color="#39d2c0"/></linearGradient></defs>
-    </svg>
-    <span class="logo-text">EdgeGuard</span>
-  </div>
-  <div class="topbar-sep"></div>
-  <div class="topbar-fields">
-    <input id="url" class="form-input" placeholder="Nano URL" size="30" autocomplete="url">
-    <input id="key" class="form-input" type="password" placeholder="API key" size="18" autocomplete="off">
-    <button class="btn-primary" id="connectBtn">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      Connect
-    </button>
-  </div>
-  <span id="conn" class="badge badge-off">offline</span>
-  <span id="device" class="muted" style="font-size:12px"></span>
+<!-- ================= CONNECT ================= -->
+<div id="connectView" class="connect">
+  <form class="connect-card" id="connectForm">
+    <div class="hud"></div>
+    <div class="brand"><span class="brand-mark"><i data-i="scan" data-s="20"></i></span><div>Attendance Edge<small>Jetson Nano · Admin console</small></div></div>
+    <div>
+      <h2>Connect to your device</h2>
+      <p class="muted small">Enter the address of the Nano running <code>server.py</code> and the API key it printed when it started.</p>
+    </div>
+    <label class="field">Device URL<input class="input" id="cUrl" placeholder="http://192.168.1.50:8000" autocomplete="url" required></label>
+    <label class="field">API key<input class="input" id="cKey" type="password" placeholder="Paste the key from the Nano terminal" autocomplete="current-password" required></label>
+    <div class="err" id="connErr"></div>
+    <button class="btn primary block" id="connectBtn" type="submit"><i data-i="link" data-s="16"></i>Connect</button>
+    <p class="hint">Hosting this page online (HTTPS)? Use the Nano's HTTPS tunnel URL from Cloudflare Tunnel or ngrok. Browsers block plain <code>http://</code> requests from HTTPS pages.</p>
+  </form>
 </div>
-<hr class="glow-line">
 
-<div class="container">
-<div class="grid">
-
-  <!-- ===== DEVICE STATUS ===== -->
-  <section class="card col-5">
-    <div class="card-head">
-      <h2>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
-        Device
-      </h2>
-      <span id="mode" class="badge badge-muted">idle</span>
+<!-- ================= APP ================= -->
+<div id="app" class="app" hidden>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark"><i data-i="scan" data-s="18"></i></span><div>Attendance Edge<small>Jetson Nano console</small></div></div>
+    <nav class="nav" id="nav">
+      <button data-page="dashboard"><i data-i="grid"></i><span>Dashboard</span></button>
+      <button data-page="attendance"><i data-i="calendar"></i><span>Attendance</span></button>
+      <button data-page="members"><i data-i="users"></i><span>Members</span><span class="count" id="navMembers">0</span></button>
+      <button data-page="settings"><i data-i="sliders"></i><span>Settings</span></button>
+    </nav>
+    <div class="side-foot">
+      <div class="device-chip">
+        <div class="row1"><span class="status-dot" id="linkDot"></span><span id="devName">—</span></div>
+        <div class="sub" id="devSub">—</div>
+        <div class="sub" id="linkText">Connecting…</div>
+      </div>
+      <button class="btn ghost block" data-act="disconnect"><i data-i="logout" data-s="16"></i>Disconnect</button>
     </div>
-    <div class="card-body">
-      <div class="stats-grid">
-        <div class="stat-card green"><div class="stat-val" id="sPresent">-</div><div class="stat-label">Present</div></div>
-        <div class="stat-card blue"><div class="stat-val" id="sMembers">-</div><div class="stat-label">Members</div></div>
-        <div class="stat-card cyan"><div class="stat-val mono" id="sFps">-</div><div class="stat-label">FPS</div></div>
-        <div class="stat-card"><div class="stat-val" id="sCam" style="font-size:14px">-</div><div class="stat-label">Camera</div></div>
-        <div class="stat-card"><div class="stat-val mono" id="sUptime" style="font-size:14px">-</div><div class="stat-label">Uptime</div></div>
-        <div class="stat-card"><div class="stat-val mono" id="sTimings" style="font-size:11px">-</div><div class="stat-label">Det / LM / Enc ms</div></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div><h1 id="pageTitle">Dashboard</h1><p id="pageSub"></p></div>
+      <div class="top-actions">
+        <span class="clock" id="clock"></span>
+        <span class="pill gray" id="modePill"></span>
+        <button class="btn primary" id="trackerBtn" data-act="tracker"></button>
       </div>
-      <div id="sError" style="color:var(--red);font-size:12px;margin-top:8px"></div>
-      <div class="form-row mt-12">
-        <button class="btn-primary" id="startBtn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> Start
-        </button>
-        <button id="stopBtn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="12" height="14" rx="1"/></svg> Stop
-        </button>
-        <button id="previewBtn" class="btn-icon" title="Live preview">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-        <button id="reloadBtn" class="btn-icon" title="Reload faces">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-        </button>
-      </div>
-      <div class="preview-container mt-12">
-        <img id="preview" alt="live preview" style="display:none">
-        <div id="previewOff" class="preview-off">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="12" cy="10" r="3"/></svg>
-          Preview off
+    </header>
+
+    <!-- ---------- Dashboard ---------- -->
+    <section class="page" data-page="dashboard">
+      <div class="kpis">
+        <div class="card kpi">
+          <div class="ring-wrap"><svg class="ring" viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.915"/><circle class="ring-fg" id="kRing" cx="18" cy="18" r="15.915" stroke-dasharray="0 100"/></svg><span id="kRate">0%</span></div>
+          <div><div class="kpi-label">Present today</div><div class="kpi-val" id="kPresent">0</div><div class="kpi-sub" id="kPresentSub">of 0 members</div></div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-ic red"><i data-i="user-x" data-s="22"></i></div>
+          <div><div class="kpi-label">Absent today</div><div class="kpi-val" id="kAbsent">0</div><div class="kpi-sub">registered, not seen yet</div></div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-ic teal"><i data-i="zap" data-s="22"></i></div>
+          <div><div class="kpi-label">Recognition speed</div><div class="kpi-val" id="kFps">—</div><div class="kpi-sub" id="kFpsSub">tracker idle</div></div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-ic blue"><i data-i="cpu" data-s="22"></i></div>
+          <div><div class="kpi-label">Jetson Nano</div><div class="kpi-val sm" id="kCam">Camera off</div><div class="kpi-sub" id="kUp">uptime —</div></div>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- ===== ATTENDANCE ===== -->
-  <section class="card col-7">
-    <div class="card-head">
-      <h2>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Attendance
-      </h2>
-      <div class="form-row gap-8">
-        <input type="date" id="date" class="form-input">
-        <button id="exportBtn" class="btn-sm">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-          CSV
-        </button>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="form-row mb-8" style="margin-bottom:12px">
-        <select id="manualName" class="form-input" style="flex:1;min-width:120px"></select>
-        <button id="manualBtn" class="btn-success btn-sm">+ Mark present</button>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead><tr><th>Name</th><th>Date</th><th>Time</th><th style="width:60px"></th></tr></thead>
-          <tbody id="attBody"></tbody>
-        </table>
-      </div>
-      <div id="attEmpty" class="empty-state">No entries for this date.</div>
-    </div>
-  </section>
-
-  <!-- ===== MEMBERS ===== -->
-  <section class="card col-8">
-    <div class="card-head">
-      <h2>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-        Members
-      </h2>
-      <span class="muted" id="memCount" style="font-size:12px"></span>
-    </div>
-    <div class="card-body">
-      <div class="form-row">
-        <input id="newName" class="form-input" placeholder="Full name" style="flex:1;min-width:140px">
-        <input id="newPhotos" class="form-input" type="file" accept="image/*" multiple>
-        <button class="btn-primary" id="uploadBtn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-          Upload
-        </button>
-        <span class="dimmed">or</span>
-        <button id="regStartBtn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="12" cy="10" r="3"/></svg>
-          Nano Camera
-        </button>
-      </div>
-
-      <div id="regPanel" class="reg-panel">
-        <div class="form-row" style="margin-bottom:8px">
-          <b id="regTitle" style="font-size:13px"></b>
-          <span id="regCount" class="badge badge-on"></span>
-          <span id="regPose" class="badge badge-warn"></span>
+      <div class="dash">
+        <div class="card live-card">
+          <div class="card-head">
+            <h3><i data-i="camera" data-s="16"></i>Live camera</h3>
+            <button class="btn sm" id="watchBtn" data-act="watch"></button>
+          </div>
+          <div class="viewport">
+            <img id="liveImg" alt="Live camera feed from the Nano" hidden>
+            <div class="hud"></div>
+            <span class="pill red live live-tag" id="liveTag" hidden><span class="dot"></span>LIVE</span>
+            <div class="placeholder" id="livePh"></div>
+          </div>
+          <div class="legend">
+            <span style="color:var(--green)"><i></i><em class="muted" style="font-style:normal">Present / verified</em></span>
+            <span style="color:var(--amber)"><i></i><em class="muted" style="font-style:normal">Blink to verify</em></span>
+            <span style="color:var(--red)"><i></i><em class="muted" style="font-style:normal">Unknown face</em></span>
+          </div>
         </div>
-        <div id="regErr" style="color:var(--red);font-size:12px"></div>
-        <div class="form-row mt-8">
-          <button class="btn-primary btn-sm" id="regCapBtn">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
-            Capture
-          </button>
-          <button class="btn-sm" id="regDoneBtn">Finish</button>
+        <div class="card activity">
+          <div class="card-head"><h3><i data-i="activity" data-s="16"></i>Activity</h3><span class="muted small">today</span></div>
+          <ul class="feed" id="feed"></ul>
         </div>
-        <div class="muted mt-8" style="font-size:12px">Stand in front of the Nano camera. 3–5 photos from different angles work best.</div>
       </div>
-
-      <div id="uploadMsg" class="muted mt-8" style="font-size:12px"></div>
-      <div class="members-grid mt-12" id="members"></div>
-    </div>
-  </section>
-
-  <!-- ===== SIDEBAR: SETTINGS + EVENTS ===== -->
-  <div class="col-4" style="display:flex;flex-direction:column;gap:16px">
-
-    <!-- Settings -->
-    <section class="card">
-      <div class="card-head">
-        <h2>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          Settings
-        </h2>
-        <button id="saveCfgBtn" class="btn-primary btn-sm">Save</button>
-      </div>
-      <div class="card-body" id="cfg"><div class="empty-state">Connect to load.</div></div>
     </section>
 
-    <!-- Live Events -->
-    <section class="card" style="flex:1">
-      <div class="card-head">
-        <h2>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Live Events
-        </h2>
-        <span class="badge badge-on" style="font-size:10px">LIVE</span>
-      </div>
-      <div class="card-body">
-        <div class="feed" id="feed"><div class="empty-state">Waiting for events…</div></div>
+    <!-- ---------- Attendance ---------- -->
+    <section class="page" data-page="attendance" hidden>
+      <div class="card">
+        <div class="toolbar">
+          <div class="date-nav">
+            <button class="btn icon" id="prevDay" aria-label="Previous day"><i data-i="chev-l"></i></button>
+            <input type="date" class="input date" id="attDate" aria-label="Date">
+            <button class="btn icon" id="nextDay" aria-label="Next day"><i data-i="chev-r"></i></button>
+            <button class="btn" id="todayBtn">Today</button>
+          </div>
+          <div class="seg" id="attSeg">
+            <button data-tab="present" class="active">Present <span class="n" id="segPresent">0</span></button>
+            <button data-tab="absent">Absent <span class="n" id="segAbsent">0</span></button>
+          </div>
+          <div class="grow"></div>
+          <label class="search"><i data-i="search" data-s="16"></i><input class="input" id="attSearch" placeholder="Search name"></label>
+          <button class="btn" id="exportBtn"><i data-i="download" data-s="16"></i>Export CSV</button>
+        </div>
+        <div class="rate-row"><span id="attRate"></span><div class="bar"><i id="attBar"></i></div></div>
+        <div class="table-wrap"><table class="table"><thead id="attHead"></thead><tbody id="attBody"></tbody></table></div>
+        <div class="empty" id="attEmpty" hidden></div>
       </div>
     </section>
+
+    <!-- ---------- Members ---------- -->
+    <section class="page" data-page="members" hidden>
+      <div class="page-tools">
+        <label class="search"><i data-i="search" data-s="16"></i><input class="input" id="memSearch" placeholder="Search members"></label>
+        <span class="muted small" id="memCount"></span>
+        <div class="grow"></div>
+        <button class="btn primary" data-act="add"><i data-i="plus" data-s="16"></i>Add member</button>
+      </div>
+      <div class="members" id="memGrid"></div>
+    </section>
+
+    <!-- ---------- Settings ---------- -->
+    <section class="page" data-page="settings" hidden>
+      <div class="settings">
+        <div id="setGroups"><div class="card"><div class="empty">Loading settings…</div></div></div>
+        <aside class="side-panel">
+          <div class="card">
+            <div class="card-head"><h3><i data-i="cpu" data-s="16"></i>Live performance</h3><span id="perfMode"></span></div>
+            <div class="card-body">
+              <div class="perf-fps"><b id="perfFps">—</b><span>frames / second</span></div>
+              <div id="perfBars"></div>
+              <p class="tip"><i data-i="info" data-s="14"></i><span>Biggest speed-up on the Nano: set <b>Detector upsampling</b> to 0 when people stand within about 1.5 m of the camera.</span></p>
+            </div>
+          </div>
+          <div class="card"><div class="card-body stack">
+            <div id="cfgState"></div>
+            <button class="btn primary block" id="cfgSave" disabled><i data-i="check" data-s="16"></i>Save to device</button>
+            <div class="two"><button class="btn block" id="cfgDiscard" disabled>Discard</button><button class="btn block" id="cfgDefaults">Defaults</button></div>
+            <p class="muted small">Changes apply on the Nano immediately and are kept in <code>settings.json</code>.</p>
+          </div></div>
+          <div class="card"><div class="card-body stack">
+            <div class="lbl">Maintenance</div>
+            <button class="btn block" id="rescanBtn"><i data-i="refresh" data-s="16"></i>Rescan photos folder</button>
+            <p class="muted small">Only needed if you copied photos into <code>photos/</code> by hand.</p>
+          </div></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ================= ADD MEMBER MODAL ================= -->
+<div class="modal" id="addModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+    <div class="modal-head">
+      <div><h3 id="addTitle">Add member</h3><p class="muted small">The Nano checks every photo for exactly one clear face.</p></div>
+      <button class="btn ghost icon" data-act="close-add" aria-label="Close"><i data-i="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <label class="field">Full name<input class="input" id="addName" placeholder="e.g. Shreyash Vaigankar" maxlength="60"></label>
+      <div class="seg full" id="addTabs">
+        <button data-tab="upload" class="active"><i data-i="upload" data-s="15"></i>Upload photos</button>
+        <button data-tab="camera"><i data-i="camera" data-s="15"></i>Use Nano camera</button>
+      </div>
+      <div id="paneUpload">
+        <label class="drop" id="drop">
+          <input type="file" id="fileIn" accept="image/*" multiple hidden>
+          <span class="ph-ic"><i data-i="image" data-s="24"></i></span>
+          <b>Drop photos here or click to browse</b>
+          <span class="small" id="dropHint"></span>
+        </label>
+        <div class="thumbs" id="thumbs" hidden></div>
+        <div class="msg" id="addMsg"></div>
+      </div>
+      <div id="paneCamera" hidden>
+        <div id="capIdle">
+          <div class="cap-intro">
+            <span class="ph-ic"><i data-i="camera" data-s="24"></i></span>
+            <div><b>Capture on the Nano camera</b><p class="muted small">Ask the person to stand in front of the Nano. You'll be guided through 5 poses: straight, left, right, up and down.</p></div>
+          </div>
+          <div class="notice" id="capBlocked" hidden><i data-i="alert" data-s="16"></i><span>The tracker is using the camera. Stop it to register someone.</span><button class="btn sm" data-act="tracker">Stop tracker</button></div>
+        </div>
+        <div id="capLive" hidden>
+          <div class="viewport" id="capView"><img id="capImg" alt="Nano camera" hidden><div class="hud"></div><div class="pose" id="capPose"></div></div>
+          <div class="steps" id="capSteps"></div>
+          <div class="cap-meta"><span id="capCount"></span><span class="err" id="capErr"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" id="addFoot"></div>
   </div>
-
-</div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- ================= CONFIRM MODAL ================= -->
+<div class="modal" id="confirmModal" hidden>
+  <div class="modal-card sm" role="alertdialog" aria-modal="true" aria-labelledby="cfTitle">
+    <div class="modal-body"><h3 id="cfTitle"></h3><p class="muted" id="cfText"></p></div>
+    <div class="modal-foot"><button class="btn ghost" id="cfCancel">Cancel</button><button class="btn" id="cfOk">OK</button></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script>
-const $ = id => document.getElementById(id);
+"use strict";
+/* ================= helpers ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let base = "", key = "", es = null, status = null, members = [], rows = [], previewOn = false;
+const pad = n => String(n).padStart(2, "0");
+const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
-const SETTING_HELP = {
-  detection_model: "cnn = GPU, hog = CPU", upsample: "0 ≈ 4× faster (faces must be close)",
-  scale_factor: "Detector input scale", detect_every: "Full detection every N cycles",
-  reverify_seconds: "Re-identify tracked faces", face_match_tolerance: "Lower = stricter",
+const P = {
+  scan:'<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  play:'<polygon points="6 3 20 12 6 21 6 3"/>',
+  square:'<rect x="5" y="5" width="14" height="14" rx="2"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  "eye-off":'<path d="M9.9 4.2A9.6 9.6 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A16.6 16.6 0 0 0 2 12s3.5 8 10 8a9.4 9.4 0 0 0 5.4-1.6M14.1 14.1a3 3 0 1 1-4.2-4.2M2 2l20 20"/>',
+  camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  "camera-off":'<path d="M2 2l20 20M7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16M9.5 4h5L17 7h3a2 2 0 0 1 2 2v7.5M14.1 14.1a3 3 0 1 1-4.2-4.2"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M18 6 6 18M6 6l12 12"/>', check:'<path d="M20 6 9 17l-5-5"/>',
+  "chev-l":'<path d="m15 18-6-6 6-6"/>', "chev-r":'<path d="m9 18 6-6-6-6"/>',
+  search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  cpu:'<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>',
+  activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  refresh:'<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  "user-x":'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5M22 8l-5 5"/>',
+  "user-check":'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/>',
+  zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+  loader:'<path d="M21 12a9 9 0 1 1-6.2-8.6"/>',
 };
+const icon = (n, s = 18, cls = "") => `<svg class="ic ${cls}" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ""}</svg>`;
+function hydrate(root = document) { $$("i[data-i]", root).forEach(el => { el.outerHTML = icon(el.dataset.i, +el.dataset.s || 18); }); }
 
-function api(method, path, body) {
-  return fetch(base + path, {
-    method, headers: { "X-API-Key": key, "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  }).then(async r => {
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error || r.statusText);
-    return data;
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const longDate = s => parseYmd(s).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const shortDate = iso => iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—";
+const fmtUp = s => { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`; };
+const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "?";
+
+/* Mirrors SETTINGS in edge_core.py (used by the "Defaults" button) */
+const DEFAULTS = { flip_mode: "horizontal", detection_model: "cnn", face_match_tolerance: 0.45, scale_factor: 0.4, upsample: 1,
+  eye_ar_thresh: 0.22, eye_ar_consec_frames: 2, liveness_seconds: 10, detect_every: 3, reverify_seconds: 1, unknown_alert_seconds: 30 };
+const SETTINGS_UI = [
+  { title: "Recognition", icon: "scan", items: [
+    { k: "face_match_tolerance", label: "Match tolerance", step: 0.01, fmt: v => v.toFixed(2),
+      help: "Lower is stricter. Raise it slightly if registered people keep showing as Unknown." },
+    { k: "detection_model", label: "Face detector", options: { cnn: "GPU · CNN", hog: "CPU · HOG" },
+      help: "CNN runs on the Jetson GPU and is more accurate. HOG is lighter if GPU memory runs out." } ] },
+  { title: "Anti-spoofing (blink check)", icon: "shield", items: [
+    { k: "liveness_seconds", label: "Blink stays valid for", step: 1, max: 60, unit: "s", help: "A blink proves a live person for this long, so a printed photo can't reuse it." },
+    { k: "eye_ar_thresh", label: "Eye-closed threshold", step: 0.01, fmt: v => v.toFixed(2), help: "Eye aspect ratio below this counts as closed." },
+    { k: "eye_ar_consec_frames", label: "Closed frames for a blink", step: 1, help: "How many processed frames the eyes must stay closed." } ] },
+  { title: "Jetson performance", icon: "zap", items: [
+    { k: "upsample", label: "Detector upsampling", options: { 0: "0 · fastest", 1: "1 · default", 2: "2 · far faces" },
+      help: "0 is about 4× faster but people must stand closer to the camera." },
+    { k: "scale_factor", label: "Detection scale", step: 0.05, fmt: v => v.toFixed(2) + "×", help: "The frame is shrunk to this size before face detection." },
+    { k: "detect_every", label: "Full detection every", step: 1, max: 10, unit: "cycles", help: "Between detections, faces are tracked cheaply with landmarks." },
+    { k: "reverify_seconds", label: "Re-identify tracked faces", step: 0.5, max: 5, unit: "s", help: "How often the expensive face encoder re-checks a tracked face." } ] },
+  { title: "Camera & alerts", icon: "camera", items: [
+    { k: "flip_mode", label: "Camera orientation", options: { none: "Normal", horizontal: "Mirror", vertical: "Flip", both: "180°" } },
+    { k: "unknown_alert_seconds", label: "Unknown-face alerts", step: 5, max: 300, fmt: v => v ? `every ${v}s` : "off",
+      help: "Minimum gap between alerts for unregistered faces. 0 turns them off." } ] },
+];
+
+const S = { base: "", key: "", es: null, connected: false, status: null, reg: null, members: [], rows: [], todayRows: [],
+  config: null, pendingCfg: {}, page: "dashboard", attTab: "present", watch: localStorage.getItem("edgeWatch") === "1",
+  streamEl: null, feed: [], feedSeq: 0 };
+const add = { tab: "upload", files: [], results: null, busy: false };
+const today = () => S.status ? S.status.today : ymd(new Date());
+
+/* ================= API ================= */
+const withKey = p => S.base + p + (p.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(S.key);
+const photoUrl = m => withKey(`/api/members/${encodeURIComponent(m.id)}/photo`) + `&v=${m.photo_count}`;
+async function api(method, path, body) {
+  const headers = { "X-API-Key": S.key };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const r = await fetch(S.base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(data.error || `${r.status} ${r.statusText}`); e.status = r.status; e.data = data; throw e; }
+  return data;
+}
+
+/* ================= UI primitives ================= */
+function toast(type, msg) {
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.innerHTML = icon({ success: "check", error: "alert" }[type] || "info", 16) + `<span>${esc(msg)}</span>`;
+  $("#toasts").prepend(el);
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 260); }, type === "error" ? 6000 : 3500);
+}
+function confirmBox({ title, text, ok = "Confirm", danger = false }) {
+  return new Promise(resolve => {
+    const m = $("#confirmModal"), okBtn = $("#cfOk"), cancel = $("#cfCancel");
+    $("#cfTitle").textContent = title; $("#cfText").textContent = text;
+    okBtn.textContent = ok; okBtn.className = "btn " + (danger ? "danger solid" : "primary");
+    const done = v => { m.hidden = true; S.confirmDone = null; resolve(v); };
+    okBtn.onclick = () => done(true); cancel.onclick = () => done(false);
+    m.onclick = e => { if (e.target === m) done(false); };
+    S.confirmDone = done; m.hidden = false; okBtn.focus();
   });
 }
-const withKey = p => base + p + (p.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(key);
-function toast(msg, color) {
-  const t = $("toast"); t.textContent = msg; t.style.background = color || "var(--green)"; t.style.color = color ? "#fff" : "#000";
-  t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 3500);
+async function withBusy(btn, label, fn) {
+  const html = btn.innerHTML; btn.disabled = true; btn.innerHTML = icon("loader", 16, "spin") + esc(label);
+  try { return await fn(); } finally { btn.disabled = false; btn.innerHTML = html; }
 }
-const fail = e => toast(e.message || e, "var(--red)");
-
-// ---- connection ----
-function connect() {
-  base = $("url").value.trim().replace(/\/+$/, "");
-  key = $("key").value.trim();
-  localStorage.setItem("edgeUrl", base); localStorage.setItem("edgeKey", key);
-  if (es) es.close();
-  api("GET", "/api/status").then(s => {
-    renderStatus(s); $("date").value = s.today;
-    loadMembers(); loadAttendance(); loadConfig();
-    es = new EventSource(withKey("/api/events"));
-    es.onopen = () => setConn(true);
-    es.onerror = () => setConn(false);
-    es.addEventListener("status", e => renderStatus(JSON.parse(e.data).data || JSON.parse(e.data)));
-    es.addEventListener("attendance_marked", e => {
-      const ev = JSON.parse(e.data), d = ev.data;
-      toast("✓ " + d.name + (d.manual ? " (manual)" : ""));
-      addFeed("green", `<b style="color:var(--green)">${esc(d.name)}</b> marked present ${d.confidence != null ? '<span class="mono" style="color:var(--cyan)">' + Math.round(d.confidence*100) + '%</span>' : '(manual)'}`, ev.ts);
-      if (d.date === $("date").value) loadAttendance();
-    });
-    es.addEventListener("attendance_removed", e => { addFeed("yellow", "Entry removed: " + esc(JSON.parse(e.data).data.name), JSON.parse(e.data).ts); loadAttendance(); });
-    es.addEventListener("members_changed", e => { members = JSON.parse(e.data).data.members; renderMembers(); });
-    es.addEventListener("registration_progress", e => renderReg(JSON.parse(e.data).data));
-    es.addEventListener("unknown_face", e => {
-      const ev = JSON.parse(e.data);
-      addFeed("red", `<img src="${ev.data.snapshot}"> <span style="color:var(--red)">Unknown face</span>`, ev.ts);
-    });
-    es.addEventListener("config_changed", () => loadConfig());
-  }).catch(e => { setConn(false); fail("Connect failed: " + e.message); });
+function avatar(name) {
+  const m = S.members.find(x => x.name === name);
+  return `<span class="avatar">${esc(initials(name))}${m ? `<img src="${photoUrl(m)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</span>`;
 }
-function setConn(on) { $("conn").textContent = on ? "online" : "offline"; $("conn").className = "badge " + (on ? "badge-on" : "badge-off"); }
-
-// ---- status ----
-function fmtUptime(s) { const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return h ? `${h}h ${m}m` : `${m}m`; }
-function renderStatus(s) {
-  const prev = status && status.mode; status = s;
-  $("device").textContent = `${s.device_id} · v${s.version}`;
-  $("mode").textContent = s.mode;
-  $("mode").className = "badge " + (s.mode==="tracking" ? "badge-on" : s.mode==="registering" ? "badge-warn" : "badge-muted");
-  $("sPresent").textContent = s.present_today;
-  $("sMembers").textContent = s.members;
-  $("sFps").textContent = s.mode==="tracking" ? s.fps : "-";
-  $("sCam").innerHTML = s.camera_ok ? '<span style="color:var(--green)">● ON</span>' : '<span class="dimmed">○ OFF</span>';
-  $("sUptime").textContent = fmtUptime(s.uptime_s);
-  const t = s.timings_ms || {};
-  $("sTimings").textContent = t.detect != null ? `${t.detect} / ${t.landmarks} / ${t.encode}` : "-";
-  $("sError").textContent = s.error || "";
-  $("startBtn").disabled = s.mode !== "idle";
-  $("stopBtn").disabled = s.mode !== "tracking";
-  $("regStartBtn").disabled = s.mode !== "idle";
-  renderReg(s.registration);
-  if (prev !== s.mode) refreshPreview();
-}
-function refreshPreview() {
-  const img = $("preview"), show = previewOn && status && status.camera_ok;
-  img.style.display = show ? "block" : "none";
-  $("previewOff").style.display = show ? "none" : "flex";
-  img.src = show ? withKey("/api/stream") + "&t=" + Date.now() : "";
+/* Only one MJPEG stream at a time - each one costs the Nano a JPEG encode per frame */
+function setStream(el) {
+  if (S.streamEl === el) return;
+  if (S.streamEl) { S.streamEl.src = BLANK; S.streamEl.hidden = true; }
+  S.streamEl = el;
+  if (el) { el.hidden = false; el.src = withKey("/api/stream") + "&t=" + Date.now(); }
 }
 
-// ---- attendance ----
-function loadAttendance() {
-  api("GET", "/api/attendance?date=" + $("date").value).then(d => {
-    rows = d.rows;
-    $("attBody").innerHTML = rows.map((r, i) =>
-      `<tr><td><b>${esc(r.name)}</b></td><td class="mono muted">${esc(r.date)}</td><td class="mono">${esc(r.time)}</td>
-       <td><button class="btn-danger btn-sm" data-i="${i}">✕</button></td></tr>`).join("");
-    $("attEmpty").style.display = rows.length ? "none" : "block";
-  }).catch(fail);
+/* ================= connection ================= */
+async function connect() {
+  S.base = $("#cUrl").value.trim().replace(/\/+$/, "");
+  S.key = $("#cKey").value.trim();
+  $("#connErr").textContent = "";
+  if (location.protocol === "https:" && S.base.startsWith("http:")) {
+    $("#connErr").textContent = "This page is served over HTTPS, so the device URL must be HTTPS too (use the tunnel URL).";
+    return;
+  }
+  await withBusy($("#connectBtn"), "Connecting…", async () => {
+    let st;
+    try { st = await api("GET", "/api/status"); }
+    catch (e) {
+      $("#connErr").textContent = e.status === 401 ? "Wrong API key. Copy it again from the Nano terminal or the .api_key file."
+        : e.status ? `Device replied: ${e.message}` : "Can't reach the device at this URL. Is server.py running and the URL correct?";
+      return;
+    }
+    localStorage.setItem("edgeUrl", S.base); localStorage.setItem("edgeKey", S.key);
+    S.status = null; S.feed = []; S.pendingCfg = {};
+    $("#connectView").hidden = true; $("#app").hidden = false;
+    applyStatus(st);
+    $("#attDate").value = st.today;
+    await Promise.all([loadMembers(), loadAttendance(), loadConfig()]).catch(e => toast("error", e.message));
+    seedFeed();
+    openEvents();
+    go((location.hash || "#dashboard").slice(1));
+  });
 }
-$("attBody").onclick = e => {
-  const i = e.target.dataset.i; if (i === undefined) return;
-  const r = rows[i];
-  if (!confirm(`Remove ${r.name} on ${r.date}?`)) return;
-  api("DELETE", `/api/attendance?name=${encodeURIComponent(r.name)}&date=${r.date}`).then(loadAttendance).catch(fail);
-};
-$("manualBtn").onclick = () => {
-  const name = $("manualName").value; if (!name) return;
-  api("POST", "/api/attendance", { name, date: $("date").value }).then(loadAttendance).catch(fail);
-};
-$("exportBtn").onclick = () => {
-  const csv = "Name,Date,Time\n" + rows.map(r => [r.name,r.date,r.time].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+function disconnect() {
+  if (S.es) S.es.close();
+  S.es = null; S.connected = false; setStream(null);
+  $("#app").hidden = true; $("#connectView").hidden = false;
+}
+function setLink(on) {
+  S.connected = on;
+  $("#linkDot").classList.toggle("on", on);
+  $("#linkText").textContent = on ? "Live link connected" : "Reconnecting…";
+}
+function openEvents() {
+  if (S.es) S.es.close();
+  const es = S.es = new EventSource(withKey("/api/events"));
+  es.onopen = () => setLink(true);
+  es.onerror = () => setLink(false);
+  const on = (type, fn) => es.addEventListener(type, e => {
+    const m = JSON.parse(e.data), wrapped = m && m.type && "data" in m && "ts" in m;
+    fn(wrapped ? m.data : m, wrapped ? m.ts : null);
+  });
+  on("status", d => applyStatus(d));
+  on("attendance_marked", d => {
+    if (d.date === today() && !S.todayRows.some(r => r.name === d.name)) S.todayRows.push({ name: d.name, date: d.date, time: d.time });
+    addFeed({ kind: "checkin", name: d.name, time: d.time, conf: d.confidence, manual: d.manual, date: d.date });
+    if (!d.manual) toast("success", `${d.name} checked in`);
+    if ($("#attDate").value === d.date) loadAttendance(); else renderAll();
+  });
+  on("attendance_removed", (d, ts) => {
+    if (d.date === today()) S.todayRows = S.todayRows.filter(r => r.name !== d.name);
+    addFeed({ kind: "removed", name: d.name, date: d.date, time: (ts || "").slice(11, 19) });
+    if ($("#attDate").value === d.date) loadAttendance(); else renderAll();
+  });
+  on("members_changed", d => { S.members = d.members; renderAll(); });
+  on("registration_progress", d => { S.reg = d; renderCapture(); });
+  on("unknown_face", (d, ts) => { addFeed({ kind: "unknown", snap: d.snapshot, time: (ts || "").slice(11, 19) }); toast("info", "Unknown face at the camera"); });
+  on("config_changed", d => { if (S.config) { S.config.values = d; if (!dirtyKeys().length) renderSettings(); } });
+}
+
+/* ================= status ================= */
+function applyStatus(s) {
+  const prev = S.status; S.status = s; S.reg = s.registration;
+  $("#devName").textContent = s.device_id;
+  $("#devSub").textContent = `v${s.version} · up ${fmtUp(s.uptime_s)}`;
+  const M = { tracking: ["green live", "Tracking"], registering: ["amber live", "Registering"], idle: ["gray", "Idle"] };
+  const [cls, label] = M[s.mode] || M.idle;
+  $("#modePill").className = "pill " + cls; $("#modePill").innerHTML = `<span class="dot"></span>${label}`;
+  renderTracker();
+  if (prev) {
+    if (prev.mode !== s.mode) {
+      const msg = { "idle>tracking": "Tracker started", "tracking>idle": "Tracker stopped", "idle>registering": "Registration started", "registering>idle": "Registration finished" }[`${prev.mode}>${s.mode}`];
+      if (msg) addFeed({ kind: "system", title: msg, icon: s.mode === "tracking" ? "play" : s.mode === "registering" ? "camera" : "square", time: s.time.slice(11, 19) });
+    }
+    if (prev.today !== s.today) { $("#attDate").value = s.today; loadAttendance(); }
+  }
+  if (s.error && (!prev || prev.error !== s.error)) { toast("error", s.error); addFeed({ kind: "error", title: s.error, time: s.time.slice(11, 19) }); }
+  renderKpis(); renderLive(); renderPerf(); renderCapture(); setSub();
+}
+function renderTracker() {
+  const b = $("#trackerBtn"), m = S.status ? S.status.mode : "idle";
+  if (m === "tracking") { b.className = "btn danger"; b.innerHTML = icon("square", 15) + "Stop tracking"; }
+  else if (m === "registering") { b.className = "btn"; b.innerHTML = icon("camera", 16) + "Registering…"; }
+  else { b.className = "btn primary"; b.innerHTML = icon("play", 15) + "Start tracking"; }
+}
+async function toggleTracker() {
+  const s = S.status; if (!s) return;
+  if (s.mode === "registering") return openAdd("camera");
+  const starting = s.mode === "idle";
+  try {
+    await withBusy($("#trackerBtn"), starting ? "Loading faces…" : "Stopping…", async () =>
+      applyStatus(await api("POST", starting ? "/api/tracker/start" : "/api/tracker/stop")));
+  } catch (e) { toast("error", e.message); }
+  renderTracker();
+}
+
+/* ================= dashboard ================= */
+function counts() {
+  const presentNames = new Set(S.todayRows.map(r => r.name));
+  const regPresent = S.members.filter(m => presentNames.has(m.name)).length;
+  return { present: presentNames.size, regPresent, absent: S.members.length - regPresent,
+           rate: S.members.length ? Math.round(regPresent / S.members.length * 100) : 0 };
+}
+function renderKpis() {
+  const s = S.status; if (!s) return;
+  const c = counts(), tracking = s.mode === "tracking", t = s.timings_ms || {};
+  $("#kPresent").textContent = c.present;
+  $("#kPresentSub").textContent = `of ${S.members.length} member${S.members.length === 1 ? "" : "s"}`;
+  $("#kRing").setAttribute("stroke-dasharray", `${c.rate} 100`); $("#kRate").textContent = c.rate + "%";
+  $("#kAbsent").textContent = c.absent;
+  $("#kFps").innerHTML = tracking ? `${s.fps.toFixed(1)}<small> fps</small>` : "—";
+  $("#kFpsSub").textContent = tracking ? (t.detect != null ? `detection ${t.detect.toFixed(0)} ms` : "warming up…") : "tracker idle";
+  $("#kCam").innerHTML = s.camera_ok ? `<span style="color:var(--green)">Camera on</span>` : `<span class="muted">Camera off</span>`;
+  $("#kUp").textContent = `uptime ${fmtUp(s.uptime_s)} · v${s.version}`;
+  $("#navMembers").textContent = S.members.length;
+}
+function renderLive() {
+  const s = S.status; if (!s) return;
+  const img = $("#liveImg"), ph = $("#livePh"), btn = $("#watchBtn");
+  const canWatch = s.mode === "tracking" && s.camera_ok;
+  const showing = canWatch && S.watch && S.page === "dashboard" && $("#addModal").hidden;
+  btn.disabled = !canWatch;
+  btn.innerHTML = S.watch && canWatch ? icon("eye-off", 15) + "Pause view" : icon("eye", 15) + "Watch live";
+  $("#liveTag").hidden = !showing;
+  if (showing) { setStream(img); ph.hidden = true; return; }
+  if (S.streamEl === img) setStream(null);
+  ph.hidden = false;
+  if (s.mode === "tracking") {
+    ph.innerHTML = `<div class="grid-bg"></div><div class="scanline"></div><span class="ph-ic scan">${icon("scan", 26)}</span>
+      <h4>Recognising faces</h4><p>Attendance is being marked automatically. The live view is paused to save Jetson CPU.</p>
+      <button class="btn" data-act="watch">${icon("eye", 15)}Watch live</button>`;
+  } else if (s.mode === "registering") {
+    ph.innerHTML = `<span class="ph-ic">${icon("camera", 26)}</span><h4>Registration in progress</h4>
+      <p>${esc(S.reg ? S.reg.name : "Someone")} is being registered on the Nano camera.</p>
+      <button class="btn" data-act="open-capture">${icon("camera", 15)}Open capture</button>`;
+  } else {
+    ph.innerHTML = `<span class="ph-ic">${icon("camera-off", 26)}</span><h4>Tracker is stopped</h4>
+      <p>Start tracking to recognise faces at the door and mark attendance automatically.</p>
+      <button class="btn primary" data-act="tracker">${icon("play", 15)}Start tracking</button>`;
+  }
+}
+function feedItem(f, isNew) {
+  let lead, title, extra = "";
+  if (f.kind === "checkin") {
+    lead = avatar(f.name); title = `<b>${esc(f.name)}</b> checked in`;
+    extra = f.manual ? `<span class="chip gray">manual</span>` : f.conf != null ? `<span class="chip green">${Math.round(f.conf * 100)}% match</span>` : "";
+    if (f.date && f.date !== today()) extra += `<span class="chip gray">${esc(f.date)}</span>`;
+  } else if (f.kind === "unknown") {
+    lead = `<span class="avatar red">${f.snap ? `<img src="${f.snap}" alt="">` : icon("user-x", 16)}</span>`;
+    title = "Unknown face at the camera"; extra = `<span class="chip red">not registered</span>`;
+  } else if (f.kind === "removed") {
+    lead = `<span class="f-ic amber">${icon("user-x", 16)}</span>`; title = `Attendance removed for <b>${esc(f.name)}</b>`;
+    if (f.date !== today()) extra = `<span class="chip gray">${esc(f.date)}</span>`;
+  } else if (f.kind === "error") {
+    lead = `<span class="f-ic red">${icon("alert", 16)}</span>`; title = esc(f.title);
+  } else {
+    lead = `<span class="f-ic teal">${icon(f.icon || "activity", 16)}</span>`; title = esc(f.title);
+  }
+  return `<li class="${isNew ? "new" : ""}">${lead}<div class="f-main"><div class="f-title">${title}</div><div class="f-sub">${esc(f.time || "")}${extra}</div></div></li>`;
+}
+const FEED_EMPTY = `<li class="empty" style="display:grid">${icon("activity", 22)}<b>No activity yet today</b><span>Check-ins and alerts from the Nano appear here instantly.</span></li>`;
+function seedFeed() {
+  S.feed = S.todayRows.slice().sort((a, b) => b.time.localeCompare(a.time)).slice(0, 40)
+    .map(r => ({ kind: "checkin", name: r.name, time: r.time, date: r.date }));
+  $("#feed").innerHTML = S.feed.length ? S.feed.map(f => feedItem(f, false)).join("") : FEED_EMPTY;
+}
+function addFeed(item) {
+  const feed = $("#feed");
+  if (!S.feed.length) feed.innerHTML = "";
+  S.feed.unshift(item);
+  feed.insertAdjacentHTML("afterbegin", feedItem(item, true));
+  while (S.feed.length > 60) { S.feed.pop(); feed.lastElementChild.remove(); }
+}
+
+/* ================= attendance ================= */
+async function loadAttendance() {
+  const date = $("#attDate").value || today();
+  try {
+    const d = await api("GET", `/api/attendance?date=${date}`);
+    if (date !== $("#attDate").value) return;
+    S.rows = d.rows;
+    if (date === today()) S.todayRows = d.rows.slice();
+    renderAll();
+  } catch (e) { toast("error", e.message); }
+}
+function renderAttendance() {
+  const date = $("#attDate").value, q = $("#attSearch").value.trim().toLowerCase();
+  const presentMap = new Map(S.rows.map(r => [r.name, r]));
+  const memberNames = new Set(S.members.map(m => m.name));
+  const present = S.rows.slice().sort((a, b) => a.time.localeCompare(b.time));
+  const absent = S.members.filter(m => !presentMap.has(m.name));
+  const regPresent = S.members.length - absent.length;
+  const rate = S.members.length ? Math.round(regPresent / S.members.length * 100) : 0;
+  const match = n => n.toLowerCase().includes(q);
+  $("#segPresent").textContent = present.length; $("#segAbsent").textContent = absent.length;
+  $("#attRate").textContent = `${regPresent} of ${S.members.length} members present · ${rate}%`;
+  $("#attBar").style.width = rate + "%";
+  $("#nextDay").disabled = date >= today();
+  let rows = "", empty = "";
+  if (S.attTab === "present") {
+    $("#attHead").innerHTML = `<tr><th>Member</th><th>Check-in</th><th>Status</th><th></th></tr>`;
+    rows = present.filter(r => match(r.name)).map(r => `<tr>
+      <td><div class="person">${avatar(r.name)}<div>${esc(r.name)}${memberNames.has(r.name) ? "" : `<div class="sub">no longer registered</div>`}</div></div></td>
+      <td class="mono">${esc(r.time)}</td><td><span class="pill green"><span class="dot"></span>Present</span></td>
+      <td class="actions"><button class="btn sm ghost icon" data-unmark="${esc(r.name)}" aria-label="Remove ${esc(r.name)}" title="Remove entry">${icon("trash", 15)}</button></td></tr>`).join("");
+    empty = q ? `No present member matches “${esc(q)}”.` : `${icon("calendar", 22)}<b>No check-ins on this date</b><span>People appear here as soon as the Nano recognises them.</span>`;
+  } else {
+    $("#attHead").innerHTML = `<tr><th>Member</th><th>Check-in</th><th>Status</th><th></th></tr>`;
+    rows = absent.filter(m => match(m.name)).map(m => `<tr>
+      <td><div class="person">${avatar(m.name)}<div>${esc(m.name)}</div></div></td><td class="muted">—</td>
+      <td><span class="pill red"><span class="dot"></span>Absent</span></td>
+      <td class="actions"><button class="btn sm" data-mark="${esc(m.name)}">${icon("user-check", 14)}Mark present</button></td></tr>`).join("");
+    empty = q ? `No absent member matches “${esc(q)}”.` : S.members.length ? `${icon("user-check", 22)}<b>Everyone is present</b>` : `${icon("users", 22)}<b>No members yet</b><span>Add members first so absences can be tracked.</span>`;
+  }
+  $("#attBody").innerHTML = rows;
+  $("#attEmpty").hidden = !!rows; $("#attEmpty").innerHTML = empty;
+}
+function shiftDay(n) {
+  const d = parseYmd($("#attDate").value || today()); d.setDate(d.getDate() + n);
+  const v = ymd(d); if (v > today()) return;
+  $("#attDate").value = v; setSub(); loadAttendance();
+}
+function exportCsv() {
+  const date = $("#attDate").value, presentMap = new Map(S.rows.map(r => [r.name, r]));
+  const names = [...new Set([...S.members.map(m => m.name), ...S.rows.map(r => r.name)])].sort();
+  const q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const csv = "Name,Date,Status,Time\n" + names.map(n => [n, date, presentMap.has(n) ? "Present" : "Absent", presentMap.has(n) ? presentMap.get(n).time : ""].map(q).join(",")).join("\n");
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
-  a.download = `attendance_${$("date").value}.csv`; a.click();
-};
-$("date").onchange = loadAttendance;
-
-// ---- members ----
-function loadMembers() { api("GET", "/api/members").then(d => { members = d.members; renderMembers(); }).catch(fail); }
-function renderMembers() {
-  $("memCount").textContent = members.length + " registered";
-  $("members").innerHTML = members.map(m => `<div class="member-card">
-      <button class="del-btn" data-id="${esc(m.id)}" data-name="${esc(m.name)}" title="Delete">✕</button>
-      <img loading="lazy" src="${withKey("/api/members/"+encodeURIComponent(m.id)+"/photo")}&v=${m.photo_count}" alt="">
-      <div class="name">${esc(m.name)}</div><small>${m.photo_count} photo(s)</small></div>`).join("");
-  $("manualName").innerHTML = members.map(m => `<option>${esc(m.name)}</option>`).join("");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `attendance_${date}.csv`; a.click(); URL.revokeObjectURL(a.href);
 }
-$("members").onclick = e => {
-  const btn = e.target.closest("[data-id]"); if (!btn) return;
-  if (!confirm(`Delete ${btn.dataset.name}? Past attendance is kept.`)) return;
-  api("DELETE", "/api/members/" + encodeURIComponent(btn.dataset.id)).catch(fail);
-};
 
+/* ================= members ================= */
+async function loadMembers() { S.members = (await api("GET", "/api/members")).members; renderAll(); }
+function renderMembers() {
+  const q = $("#memSearch").value.trim().toLowerCase();
+  const present = new Set(S.todayRows.map(r => r.name));
+  const list = S.members.filter(m => m.name.toLowerCase().includes(q));
+  $("#memCount").textContent = `${S.members.length} registered`;
+  $("#memGrid").innerHTML = (q ? "" : `<button class="member add-tile" data-act="add"><span class="ph-ic">${icon("plus", 24)}</span><b>Add member</b><span>Upload photos or capture on the Nano camera</span></button>`)
+    + list.map(m => `<article class="member">
+      <div class="ph">${esc(initials(m.name))}<img src="${photoUrl(m)}" alt="" loading="lazy" onerror="this.remove()"><div class="hud"></div>
+        ${present.has(m.name) ? `<span class="pill green tag"><span class="dot"></span>Present</span>` : ""}
+        <button class="btn sm icon del" data-del="${esc(m.id)}" data-name="${esc(m.name)}" aria-label="Delete ${esc(m.name)}" title="Delete member">${icon("trash", 14)}</button>
+      </div>
+      <div class="info"><div class="nm">${esc(m.name)}</div><div class="meta">${m.photo_count} photo${m.photo_count === 1 ? "" : "s"} · added ${shortDate(m.registered_at)}</div></div>
+    </article>`).join("")
+    + (q && !list.length ? `<div class="empty span-all">No members match “${esc(q)}”.</div>` : "");
+}
+function renderAll() { renderKpis(); renderAttendance(); renderMembers(); }
+
+/* ---------- add member modal ---------- */
+function openAdd(tab) {
+  if (!S.reg) {
+    add.files.forEach(f => URL.revokeObjectURL(f.url));
+    add.files = []; add.results = null; $("#addName").value = ""; $("#addMsg").textContent = "";
+    renderThumbs();
+  }
+  $("#addModal").hidden = false;
+  setAddTab(S.reg ? "camera" : tab || "upload");
+  renderLive();
+  setTimeout(() => (S.reg ? $("#addFoot .primary") : $("#addName"))?.focus(), 60);
+}
+function closeAdd() {
+  if (S.reg) return finishCapture();
+  $("#addModal").hidden = true;
+  if (S.streamEl === $("#capImg")) setStream(null);
+  renderLive();
+}
+function setAddTab(t) {
+  add.tab = t;
+  $$("#addTabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
+  $("#paneUpload").hidden = t !== "upload"; $("#paneCamera").hidden = t !== "camera";
+  renderCapture();
+}
+function addFiles(list) {
+  add.results = null; $("#addMsg").textContent = "";
+  [...list].filter(f => f.type.startsWith("image/")).slice(0, 10 - add.files.length)
+    .forEach(file => add.files.push({ file, url: URL.createObjectURL(file) }));
+  renderThumbs(); renderAddFooter();
+}
+function renderThumbs() {
+  const r = add.results;
+  $("#thumbs").innerHTML = add.files.map((f, i) => {
+    const bad = r && r[i], good = r && !bad;
+    return `<div class="thumb ${bad ? "bad" : good ? "ok" : ""}"><img src="${f.url}" alt="">
+      <button type="button" data-rm="${i}" aria-label="Remove photo">${icon("x", 12)}</button>
+      ${bad ? `<span class="why">${esc(bad)}</span>` : good ? `<span class="okmark">${icon("check", 12)}</span>` : ""}</div>`;
+  }).join("");
+  $("#thumbs").hidden = !add.files.length;
+  $("#dropHint").textContent = add.files.length ? `${add.files.length} photo${add.files.length > 1 ? "s" : ""} selected (max 10)`
+    : "3–5 clear photos, one face each, from slightly different angles";
+}
+/* Downscale to <= 800 px in the browser so uploads stay small over the tunnel */
 function shrink(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      const s = Math.min(1, 800/Math.max(img.width,img.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width*s); c.height = Math.round(img.height*s);
+      const s = Math.min(1, 800 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(img.src); resolve(c.toDataURL("image/jpeg", 0.9));
     };
@@ -543,80 +954,264 @@ function shrink(file) {
     img.src = URL.createObjectURL(file);
   });
 }
-$("uploadBtn").onclick = async () => {
-  const name = $("newName").value.trim(), files = [...$("newPhotos").files];
-  if (!name || !files.length) return fail("Enter a name and choose photos");
-  $("uploadBtn").disabled = true; $("uploadMsg").textContent = "Uploading…";
+async function doUpload(btn) {
+  const name = $("#addName").value.trim();
+  if (!name) { toast("error", "Enter the member's full name first."); return $("#addName").focus(); }
   try {
-    const photos = await Promise.all(files.map(shrink));
-    const r = await api("POST", "/api/members", { name, photos });
-    $("uploadMsg").textContent = `Saved ${r.saved} photo(s) for ${r.name}.`;
-    toast(`✓ ${r.saved} photo(s) saved for ${r.name}`);
-    $("newPhotos").value = "";
-  } catch (e) { $("uploadMsg").textContent = e.message; fail(e); }
-  $("uploadBtn").disabled = false;
-};
-
-// ---- registration ----
-function renderReg(r) {
-  const p = $("regPanel"); p.classList.toggle("active", !!r);
-  if (!r) return;
-  $("regTitle").textContent = "Registering: " + r.name;
-  $("regCount").textContent = `${r.photos_saved}/${r.target}`;
-  $("regPose").textContent = "→ " + r.next_pose;
-  $("regErr").textContent = r.last_error || "";
+    await withBusy(btn, "Checking faces on the Nano…", async () => {
+      const photos = await Promise.all(add.files.map(f => shrink(f.file)));
+      let r;
+      try { r = await api("POST", "/api/members", { name, photos }); }
+      catch (e) { if (e.status === 422 && e.data && "saved" in e.data) r = e.data; else throw e; }
+      add.results = {}; r.errors.forEach(x => { add.results[x.index] = x.error; });
+      renderThumbs();
+      if (r.saved && !r.errors.length) { toast("success", `${r.name} added with ${r.saved} photo${r.saved > 1 ? "s" : ""}`); add.results = null; closeAdd(); }
+      else $("#addMsg").innerHTML = r.saved ? `Saved <b>${r.saved}</b> of ${photos.length} photos for ${esc(r.name)}. Photos outlined in red were rejected.`
+        : "No photos were saved. Each photo needs exactly one clear, front-facing face.";
+      if (r.saved) loadMembers().catch(() => {});
+    });
+  } catch (e) { toast("error", e.message); }
+  renderAddFooter();
 }
-$("regStartBtn").onclick = () => {
-  const name = $("newName").value.trim(); if (!name) return fail("Enter a name first");
-  api("POST", "/api/register/start", { name }).then(r => { renderReg(r); previewOn = true; refreshPreview(); }).catch(fail);
-};
-$("regCapBtn").onclick = () => api("POST", "/api/register/capture").then(r => {
-  renderReg(r); if (r.saved) toast(`✓ Photo ${r.photos_saved}`); else fail(r.last_error);
-}).catch(fail);
-$("regDoneBtn").onclick = () => api("POST", "/api/register/finish").then(r => {
-  toast(r.photos_saved ? `✓ ${r.photos_saved} photo(s) for ${r.name}` : "Registration cancelled", r.photos_saved ? null : "var(--yellow)");
-  renderReg(null);
-}).catch(fail);
-
-// ---- settings ----
-function loadConfig() {
-  api("GET", "/api/config").then(d => {
-    $("cfg").innerHTML = Object.entries(d.rules).map(([k, rule]) => {
-      const v = d.values[k], help = SETTING_HELP[k] || "";
-      const input = rule[0] === "choice"
-        ? `<select class="form-input" data-k="${k}">${rule[1].map(o => `<option ${o===v?"selected":""}>${o}</option>`).join("")}</select>`
-        : `<input class="form-input" data-k="${k}" type="number" min="${rule[1]}" max="${rule[2]}" step="${rule[0]==="int"?1:0.01}" value="${v}">`;
-      return `<div class="setting-row"><label>${k.replace(/_/g," ")}<small>${help}</small></label>${input}</div>`;
-    }).join("");
-  }).catch(fail);
+function renderCapture() {
+  const reg = S.reg, live = !!reg, open = !$("#addModal").hidden;
+  $("#capIdle").hidden = live; $("#capLive").hidden = !live;
+  $("#addName").disabled = live; if (live) $("#addName").value = reg.name;
+  $("#addTabs").classList.toggle("locked", live);
+  if (live) {
+    const n = reg.photos_saved, tgt = reg.target;
+    $("#capPose").innerHTML = icon("scan", 16) + esc(reg.next_pose);
+    $("#capSteps").innerHTML = Array.from({ length: Math.max(tgt, n) }, (_, i) => `<i class="${i < n ? "done" : ""}"></i>`).join("");
+    $("#capCount").textContent = n >= tgt ? `${n} photos captured · you can finish now` : `${n} of ${tgt} photos captured`;
+    $("#capErr").textContent = reg.last_error || "";
+  } else {
+    $("#capBlocked").hidden = !S.status || S.status.mode === "idle";
+  }
+  if (open && add.tab === "camera" && live && S.status && S.status.camera_ok) setStream($("#capImg"));
+  else if (S.streamEl === $("#capImg")) setStream(null);
+  renderAddFooter();
 }
-$("saveCfgBtn").onclick = () => {
-  const body = {};
-  document.querySelectorAll("#cfg [data-k]").forEach(el => body[el.dataset.k] = el.tagName==="SELECT" ? el.value : Number(el.value));
-  api("PUT", "/api/config", body).then(() => toast("✓ Settings saved")).catch(fail);
-};
-
-// ---- feed ----
-function addFeed(dotColor, html, ts) {
-  const feed = $("feed");
-  if (feed.querySelector(".empty-state")) feed.innerHTML = "";
-  const div = document.createElement("div");
-  div.className = "feed-item";
-  div.innerHTML = `<span class="feed-time">${esc((ts||"").slice(11,19))}</span><span class="feed-dot ${dotColor}"></span><span>${html}</span>`;
-  feed.prepend(div);
-  while (feed.children.length > 80) feed.lastChild.remove();
+function renderAddFooter() {
+  const f = $("#addFoot");
+  if (add.tab === "upload") {
+    f.innerHTML = `<button class="btn ghost" data-act="close-add">Cancel</button>` + (add.results
+      ? `<button class="btn primary" data-act="close-add">${icon("check", 16)}Done</button>`
+      : `<button class="btn primary" data-act="upload" ${add.files.length ? "" : "disabled"}>${icon("upload", 16)}Upload &amp; verify</button>`);
+  } else if (S.reg) {
+    f.innerHTML = `<button class="btn" data-act="finish">${icon("check", 16)}Finish${S.reg.photos_saved ? ` · ${S.reg.photos_saved} saved` : ""}</button>
+      <button class="btn primary" data-act="capture">${icon("camera", 16)}Capture <kbd>Space</kbd></button>`;
+  } else {
+    const idle = S.status && S.status.mode === "idle";
+    f.innerHTML = `<button class="btn ghost" data-act="close-add">Cancel</button>
+      <button class="btn primary" data-act="start-capture" ${idle ? "" : "disabled"}>${icon("camera", 16)}Start camera</button>`;
+  }
+}
+async function startCapture(btn) {
+  const name = $("#addName").value.trim();
+  if (!name) { toast("error", "Enter the member's full name first."); return $("#addName").focus(); }
+  try { await withBusy(btn, "Opening camera…", async () => { S.reg = await api("POST", "/api/register/start", { name }); }); }
+  catch (e) { toast("error", e.message); }
+  renderCapture();
+}
+async function doCapture() {
+  if (add.busy || !S.reg) return;
+  add.busy = true;
+  try {
+    const r = await api("POST", "/api/register/capture");
+    S.reg = r; renderCapture();
+    if (r.saved) { const v = $("#capView"); v.classList.remove("flash"); void v.offsetWidth; v.classList.add("flash"); }
+  } catch (e) { toast("error", e.message); }
+  finally { add.busy = false; }
+}
+async function finishCapture() {
+  try {
+    const r = await api("POST", "/api/register/finish");
+    S.reg = null;
+    toast(r.photos_saved ? "success" : "info", r.photos_saved ? `${r.name} registered with ${r.photos_saved} photo${r.photos_saved > 1 ? "s" : ""}`
+      : "Registration cancelled. No photos were saved.");
+    $("#addModal").hidden = true;
+    if (S.streamEl === $("#capImg")) setStream(null);
+    renderCapture(); renderLive();
+    if (r.photos_saved) { await loadMembers().catch(() => {}); go("members"); }
+  } catch (e) { toast("error", e.message); }
 }
 
-// ---- controls ----
-$("startBtn").onclick = () => api("POST", "/api/tracker/start").then(renderStatus).catch(fail);
-$("stopBtn").onclick = () => api("POST", "/api/tracker/stop").then(renderStatus).catch(fail);
-$("reloadBtn").onclick = () => api("POST", "/api/reload").then(() => toast("✓ Faces will reload")).catch(fail);
-$("previewBtn").onclick = () => { previewOn = !previewOn; refreshPreview(); };
-$("connectBtn").onclick = connect;
+/* ================= settings ================= */
+async function loadConfig() { S.config = await api("GET", "/api/config"); S.pendingCfg = {}; renderSettings(); }
+const fmtSetting = (item, v) => item.fmt ? item.fmt(+v) : `${+v}${item.unit ? " " + item.unit : ""}`;
+const castSetting = (k, v) => { const t = S.config.rules[k][0]; return t === "int" ? parseInt(v, 10) : t === "float" ? parseFloat(v) : v; };
+const dirtyKeys = () => S.config ? Object.keys(S.pendingCfg).filter(k => S.pendingCfg[k] !== S.config.values[k]) : [];
+function settingControl(item, rule, value) {
+  if (item.options || rule[0] === "choice") {
+    const opts = item.options || Object.fromEntries(rule[1].map(o => [o, o]));
+    return `<div class="seg" data-k="${item.k}">${Object.entries(opts).map(([v, l]) =>
+      `<button type="button" data-v="${esc(v)}" class="${String(value) === v ? "active" : ""}">${esc(l)}</button>`).join("")}</div>`;
+  }
+  const max = Math.max(Math.min(rule[2], item.max ?? rule[2]), value), step = item.step ?? (rule[0] === "int" ? 1 : 0.01);
+  return `<div class="range"><input type="range" data-k="${item.k}" min="${rule[1]}" max="${max}" step="${step}" value="${value}" aria-label="${esc(item.label)}"><output>${esc(fmtSetting(item, value))}</output></div>`;
+}
+function renderSettings() {
+  if (!S.config) return;
+  const { values, rules } = S.config, cur = { ...values, ...S.pendingCfg };
+  const known = new Set(SETTINGS_UI.flatMap(g => g.items.map(i => i.k)));
+  const groups = SETTINGS_UI.map(g => ({ ...g, items: g.items.filter(i => rules[i.k]) }));
+  const extra = Object.keys(rules).filter(k => !known.has(k)).map(k => ({ k, label: k.replace(/_/g, " ") }));
+  if (extra.length) groups.push({ title: "Other", icon: "sliders", items: extra });
+  $("#setGroups").innerHTML = groups.filter(g => g.items.length).map(g => `<section class="card set-group">
+      <div class="card-head"><h3>${icon(g.icon, 16)}${esc(g.title)}</h3></div>
+      ${g.items.map(i => `<div class="set-row ${cur[i.k] !== values[i.k] ? "edited" : ""}" data-row="${i.k}">
+        <div><div class="lbl">${esc(i.label)}</div>${i.help ? `<div class="help">${esc(i.help)}</div>` : ""}</div>
+        ${settingControl(i, rules[i.k], cur[i.k])}</div>`).join("")}
+    </section>`).join("");
+  markDirty();
+}
+function setPending(k, v) {
+  S.pendingCfg[k] = castSetting(k, v);
+  $(`[data-row="${k}"]`).classList.toggle("edited", S.pendingCfg[k] !== S.config.values[k]);
+  markDirty();
+}
+function markDirty() {
+  const n = dirtyKeys().length;
+  $("#cfgSave").disabled = !n; $("#cfgDiscard").disabled = !n;
+  $("#cfgState").innerHTML = n ? `<span class="pill amber"><span class="dot"></span>${n} unsaved change${n > 1 ? "s" : ""}</span>`
+                               : `<span class="pill green"><span class="dot"></span>In sync with the device</span>`;
+}
+async function saveConfig(btn) {
+  const body = Object.fromEntries(dirtyKeys().map(k => [k, S.pendingCfg[k]]));
+  try {
+    await withBusy(btn, "Saving…", async () => { S.config = await api("PUT", "/api/config", body); });
+    S.pendingCfg = {}; renderSettings(); toast("success", "Settings saved and applied on the Nano");
+  } catch (e) { toast("error", e.message); markDirty(); }
+}
+function renderPerf() {
+  const s = S.status; if (!s) return;
+  const t = s.timings_ms || {}, tracking = s.mode === "tracking";
+  $("#perfMode").innerHTML = tracking ? `<span class="pill green live"><span class="dot"></span>live</span>` : `<span class="pill gray">idle</span>`;
+  $("#perfFps").textContent = tracking ? s.fps.toFixed(1) : "—";
+  const keys = [["detect", "Face detection"], ["landmarks", "Landmarks + blink check"], ["encode", "Face encoding"]];
+  const max = Math.max(50, ...keys.map(([k]) => t[k] || 0));
+  $("#perfBars").innerHTML = tracking ? keys.map(([k, l]) => `<div class="metric"><div class="top"><span>${l}</span><b>${t[k] != null ? t[k].toFixed(0) + " ms" : "—"}</b></div>
+      <div class="bar"><i style="width:${Math.min(100, (t[k] || 0) / max * 100)}%"></i></div></div>`).join("")
+    : `<p class="muted small">Start the tracker to see per-step timings from the Jetson.</p>`;
+}
 
-$("url").value = localStorage.getItem("edgeUrl") || (location.protocol.startsWith("http") ? location.origin : "");
-$("key").value = localStorage.getItem("edgeKey") || "";
-if ($("url").value && $("key").value) connect();
+/* ================= navigation ================= */
+const PAGES = { dashboard: "Dashboard", attendance: "Attendance", members: "Members", settings: "Settings" };
+function setSub() {
+  const s = S.status; if (!s) return;
+  $("#pageSub").textContent = {
+    dashboard: `${s.device_id} · ${longDate(s.today)}`,
+    attendance: longDate($("#attDate").value || s.today),
+    members: "People the Nano can recognise",
+    settings: "Tune recognition accuracy and Jetson performance",
+  }[S.page];
+}
+function go(page) {
+  if (!PAGES[page]) page = "dashboard";
+  S.page = page;
+  $$("#nav button").forEach(b => b.classList.toggle("active", b.dataset.page === page));
+  $$(".page").forEach(p => { p.hidden = p.dataset.page !== page; });
+  $("#pageTitle").textContent = PAGES[page];
+  history.replaceState(null, "", "#" + page);
+  setSub(); renderLive();
+  if (page === "settings") renderPerf();
+}
+
+/* ================= events ================= */
+$("#connectForm").addEventListener("submit", e => { e.preventDefault(); connect(); });
+$("#nav").addEventListener("click", e => { const b = e.target.closest("[data-page]"); if (b) go(b.dataset.page); });
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const act = a.dataset.act;
+  if (act === "tracker") toggleTracker();
+  else if (act === "watch") { S.watch = !S.watch; localStorage.setItem("edgeWatch", S.watch ? "1" : "0"); renderLive(); }
+  else if (act === "add") openAdd("upload");
+  else if (act === "open-capture") openAdd("camera");
+  else if (act === "close-add") closeAdd();
+  else if (act === "upload") doUpload(a);
+  else if (act === "start-capture") startCapture(a);
+  else if (act === "capture") doCapture();
+  else if (act === "finish") finishCapture();
+  else if (act === "disconnect") disconnect();
+});
+$("#attDate").addEventListener("change", () => { setSub(); loadAttendance(); });
+$("#prevDay").onclick = () => shiftDay(-1);
+$("#nextDay").onclick = () => shiftDay(1);
+$("#todayBtn").onclick = () => { $("#attDate").value = today(); setSub(); loadAttendance(); };
+$("#attSeg").addEventListener("click", e => {
+  const b = e.target.closest("[data-tab]"); if (!b) return;
+  S.attTab = b.dataset.tab; $$("#attSeg button").forEach(x => x.classList.toggle("active", x === b)); renderAttendance();
+});
+$("#attSearch").addEventListener("input", renderAttendance);
+$("#memSearch").addEventListener("input", renderMembers);
+$("#exportBtn").onclick = exportCsv;
+$("#attBody").addEventListener("click", async e => {
+  const date = $("#attDate").value, un = e.target.closest("[data-unmark]"), mk = e.target.closest("[data-mark]");
+  if (un) {
+    const name = un.dataset.unmark;
+    if (!await confirmBox({ title: "Remove attendance?", text: `${name} will be marked absent on ${longDate(date)}.`, ok: "Remove", danger: true })) return;
+    api("DELETE", `/api/attendance?name=${encodeURIComponent(name)}&date=${date}`).then(loadAttendance).catch(err => toast("error", err.message));
+  } else if (mk) {
+    mk.disabled = true;
+    api("POST", "/api/attendance", { name: mk.dataset.mark, date }).then(() => { toast("success", `${mk.dataset.mark} marked present`); loadAttendance(); })
+      .catch(err => { toast("error", err.message); mk.disabled = false; });
+  }
+});
+$("#memGrid").addEventListener("click", async e => {
+  const d = e.target.closest("[data-del]"); if (!d) return;
+  if (!await confirmBox({ title: `Delete ${d.dataset.name}?`, text: "Their photos are removed from the Nano and they will no longer be recognised. Past attendance records are kept.", ok: "Delete member", danger: true })) return;
+  api("DELETE", "/api/members/" + encodeURIComponent(d.dataset.del)).then(() => { toast("success", `${d.dataset.name} deleted`); return loadMembers(); })
+    .catch(err => toast("error", err.message));
+});
+$("#addTabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b && !S.reg) setAddTab(b.dataset.tab); });
+const drop = $("#drop");
+["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+$("#fileIn").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
+$("#thumbs").addEventListener("click", e => {
+  const b = e.target.closest("[data-rm]"); if (!b) return;
+  const [f] = add.files.splice(+b.dataset.rm, 1); URL.revokeObjectURL(f.url);
+  add.results = null; $("#addMsg").textContent = ""; renderThumbs(); renderAddFooter();
+});
+$("#setGroups").addEventListener("input", e => {
+  const r = e.target.closest("input[type=range]"); if (!r) return;
+  const item = SETTINGS_UI.flatMap(g => g.items).find(i => i.k === r.dataset.k) || {};
+  r.nextElementSibling.textContent = fmtSetting(item, r.value);
+  setPending(r.dataset.k, r.value);
+});
+$("#setGroups").addEventListener("click", e => {
+  const b = e.target.closest(".seg[data-k] button"); if (!b) return;
+  const seg = b.parentElement; $$("button", seg).forEach(x => x.classList.toggle("active", x === b));
+  setPending(seg.dataset.k, b.dataset.v);
+});
+$("#cfgSave").onclick = e => saveConfig(e.currentTarget);
+$("#cfgDiscard").onclick = () => { S.pendingCfg = {}; renderSettings(); };
+$("#cfgDefaults").onclick = () => {
+  S.pendingCfg = Object.fromEntries(Object.entries(DEFAULTS).filter(([k]) => S.config && S.config.rules[k]));
+  renderSettings(); toast("info", "Defaults loaded. Press Save to apply them on the Nano.");
+};
+$("#rescanBtn").onclick = () => api("POST", "/api/reload").then(() => toast("success", "The tracker will reload faces from the photos folder")).catch(e => toast("error", e.message));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { if (S.confirmDone) S.confirmDone(false); else if (!$("#addModal").hidden) closeAdd(); }
+  else if (e.code === "Space" && S.reg && !$("#addModal").hidden && add.tab === "camera" && e.target.tagName !== "INPUT") { e.preventDefault(); doCapture(); }
+});
+
+/* status polling while someone is looking at live numbers (the SSE heartbeat is only every 10 s) */
+setInterval(async () => {
+  if (!S.connected || document.hidden || !S.status || S.status.mode !== "tracking" || !["dashboard", "settings"].includes(S.page)) return;
+  try { applyStatus(await api("GET", "/api/status")); } catch (_) {}
+}, 3000);
+function tick() {
+  const d = new Date();
+  $("#clock").textContent = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString([], { hour12: false });
+}
+
+/* ================= boot ================= */
+hydrate(); tick(); setInterval(tick, 1000); renderThumbs();
+$("#cUrl").value = localStorage.getItem("edgeUrl") || (location.protocol.startsWith("http") ? location.origin : "");
+$("#cKey").value = localStorage.getItem("edgeKey") || "";
+if ($("#cUrl").value && $("#cKey").value) connect();
 </script>
 </body>
 </html>

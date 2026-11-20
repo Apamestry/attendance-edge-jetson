@@ -96,12 +96,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "X-API-Key, Content-Type, Last-Event-ID")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-    def _send(self, status, body, ctype):
+    def _send(self, status, body, ctype, cache="no-store"):
         self.send_response(status)
         self._cors()
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache)
         self.end_headers()
         self.wfile.write(body)
 
@@ -211,7 +211,8 @@ class Handler(BaseHTTPRequestHandler):
         with open(paths[0], "rb") as f:
             data = f.read()
         ctype = "image/png" if paths[0].lower().endswith(".png") else "image/jpeg"
-        self._send(200, data, ctype)
+        # The dashboard adds ?v=<photo_count> to the URL, so caching is safe and saves Nano bandwidth
+        self._send(200, data, ctype, cache="private, max-age=86400")
 
     def add_member(self):
         body = self._body()
