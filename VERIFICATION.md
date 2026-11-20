@@ -119,3 +119,4 @@ Expected response:
 | **7** | **Export CSV** | Click **Export CSV** in the **Attendance** card. | Browser downloads `attendance_YYYY-MM-DD.csv`. |
 | **8** | **Live Performance Tuning (Web UI → Nano)** | In **Recognition settings**, set `upsample` to `0` (or `detection_model` to `hog`) and click **Save**. | `settings.json` is saved on the Nano and `detect / landmarks / encode ms` drops immediately. |
 | **9** | **CLI Coexistence** | Stop `server.py` (`Ctrl+C`) and run `python3 main.py`. | Original terminal menu (options 1–7) and OpenCV window HUD work normally using the optimized pipeline. |
+
