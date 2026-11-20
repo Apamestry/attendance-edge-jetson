@@ -101,7 +101,7 @@ attendance is marked only after a blink is verified via the eye aspect ratio (EA
 day (name, date, time) to a local CSV file so offline operation remains uninterrupted.
 
 A lightweight Python HTTP server on the Nano exposes a REST API, a Server-Sent Events (SSE) stream and an
-MJPEG live preview protected by an API key, published over HTTPS via Cloudflare Tunnel. The online admin
+MJPEG live preview protected by an API key over the local network / Wi-Fi. The admin
 dashboard receives real-time check-ins, unknown-face alerts and device telemetry, and sends commands back to
 start/stop tracking, register members via photo upload or Nano camera capture, manage logs and tune settings live.
 
@@ -111,8 +111,8 @@ start/stop tracking, register members via photo upload or Nano camera capture, m
         Cortex-A57, 128-core Maxwell GPU), JetPack \fillin{4.6}, 5 V \fillin{4 A} power supply.
   \item \textbf{Sensors \& Actuators:} \fillin{USB webcam model / Raspberry Pi Camera v2 (CSI)} image
         sensor; HDMI monitor for on-device HUD (outputs are the HUD and web dashboard).
-  \item \textbf{Cloud / Platform / Protocols:} HTTP REST, SSE and MJPEG over HTTPS (Cloudflare Tunnel), API-key
-        auth, dashboard on \fillin{GitHub Pages / Netlify}; Python 3, OpenCV, dlib, NumPy, HTML/CSS/JS.
+  \item \textbf{Cloud / Platform / Protocols:} HTTP REST, SSE and MJPEG over Wi-Fi / LAN, API-key
+        authentication, responsive single-page Web UI; Python 3, OpenCV, dlib, NumPy, HTML/CSS/JS.
 \end{itemize}
 
 \section{System Block Diagram}
@@ -134,8 +134,8 @@ start/stop tracking, register members via photo upload or Nano camera capture, m
   \node[blk=teal]   (rec)  at (3.65,-2.50) {\textbf{Face recognition}\\128-D encodings};
   \node[blk=orange] (srv)  at (7.55,-0.55) {\textbf{HTTP API server}\\REST / SSE / MJPEG};
   \node[blk=violet] (csv)  at (7.55,-2.15) {\textbf{Local storage}\\attendance.csv, photos};
-  \node[blk=gray]   (tun)  at (11.45,-1.25){\textbf{Cloudflare Tunnel}\\HTTPS + API key};
-  \node[blk=green]  (dash) at (15.2,-1.25) {\textbf{Admin web dashboard}\\any browser, online};
+  \node[blk=gray]   (tun)  at (11.45,-1.25){\textbf{Wi-Fi / LAN Network}\\HTTP / SSE + API key};
+  \node[blk=green]  (dash) at (15.2,-1.25) {\textbf{Admin web dashboard}\\browser UI};
   % lanes (Sensors -> Edge device -> Communication -> Output)
   \coordinate (T) at (0,0.48); \coordinate (B) at (0,-2.98);
   \begin{scope}[on background layer]
@@ -171,7 +171,7 @@ start/stop tracking, register members via photo upload or Nano camera capture, m
 
 \section{Conclusion / Future Scope}
 The prototype met its objective: it recognises registered members at the door, blocks printed-photo proxies
-with blink detection and streams attendance to the online dashboard in real time at \fillin{X} FPS on the
-Jetson Nano. A practical upgrade is a TensorRT detector with MQTT/cloud-DB sync across multiple classrooms.
+with blink detection and streams attendance to the admin dashboard in real time at \fillin{X} FPS on the
+Jetson Nano. Future upgrades include TensorRT acceleration, secure remote tunneling (Cloudflare Tunnel), and MQTT sync.
 
 \end{document}

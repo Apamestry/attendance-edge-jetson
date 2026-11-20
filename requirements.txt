@@ -1,0 +1,24 @@
+# Core dependencies for Edge-AI Face Recognition Attendance System
+# Compatible with NVIDIA Jetson Nano (JetPack 4.x/5.x), Linux, Windows, and macOS
+
+numpy>=1.19.0
+opencv-python>=4.5.0
+dlib>=19.7.0
+face-recognition>=1.3.0
+setuptools>=60.0.0; python_version >= "3.12"
+
+# ---------------------------------------------------------------------------
+# Platform Notes:
+#
+# 1. NVIDIA Jetson Nano (CUDA GPU Acceleration):
+#    To utilize the 128-core Maxwell GPU on Jetson Nano, dlib should be
+#    compiled with CUDA support:
+#      git clone https://github.com/davisking/dlib.git
+#      cd dlib && python3 setup.py install --set DLIB_USE_CUDA=1
+#
+# 2. Windows PC:
+#    If Visual Studio C++ build tools are not installed, install the pre-built
+#    binary wheel instead of building dlib from source:
+#      pip install dlib-bin
+#      pip install face-recognition --no-deps
+# ---------------------------------------------------------------------------
